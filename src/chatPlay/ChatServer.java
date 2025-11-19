@@ -10,6 +10,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.UUID;
 import java.util.Vector;
 
 import javax.swing.JButton;
@@ -29,19 +31,23 @@ public class ChatServer extends JFrame {
     JTextArea textArea;
     private JTextField txtPortNumber;
 
-    private ServerSocket socket; // 서버소켓
-    private Socket client_socket; // accept() 에서 생성된 client 소켓, AcceptServer에서 지역변수로 선언해도 됩니다. 
-    private Vector<UserService> UserVec = new Vector<>(); // 연결된 사용자를 저장할 벡터, ArrayList와 같이 동적 배열을 만들어주는 컬렉션 객체
+    private ServerSocket socket; 
+    private Socket client_socket; 
+    private  Vector<UserService> UserVec = new Vector<>();
+    
+    private HashMap<Integer, Room> roomMap = new HashMap<>();
+    private int roomNum = 0;
+    
     private static final int BUF_LEN = 128; // Windows 처럼 BUF_LEN 을 정의
 
     /**
      * Launch the application.
      */
-    public static void main(String[] args) {   // 스윙 비주얼 디자이너를 이용해 GUI를 만들면 자동으로 생성되는 main 함수
+    public static void main(String[] args) {   
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    ChatServer frame = new ChatServer();      // JavaChatServer 클래스의 객체 생성
+                    ChatServer frame = new ChatServer();      
                     frame.setVisible(true);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -87,9 +93,9 @@ public class ChatServer extends JFrame {
                 }
                 AppendText("Chat Server Running..");
                 btnServerStart.setText("Chat Server Running..");
-                btnServerStart.setEnabled(false); // 서버를 더이상 실행시키지 못 하게 막는다
-                txtPortNumber.setEnabled(false); // 더이상 포트번호 수정못 하게 막는다
-                AcceptServer accept_server = new AcceptServer();   // 멀티 스레드 객체 생성
+                btnServerStart.setEnabled(false);
+                txtPortNumber.setEnabled(false);
+                AcceptServer accept_server = new AcceptServer();  
                 accept_server.start();
             }
         });
@@ -98,19 +104,19 @@ public class ChatServer extends JFrame {
     }
 
     
-    // 새로운 참가자 accept() 하고 user thread를 새로 생성한다. 한번 만들어서 계속 사용하는 스레드
+  
     class AcceptServer extends Thread {
         public void run() {
-            while (true) { // 사용자 접속을 계속해서 받기 위해 while문
+            while (true) { 
                 try {
                     AppendText("Waiting clients ...");
-                    client_socket = socket.accept(); // accept가 일어나기 전까지는 무한 대기중
+                    client_socket = socket.accept(); 
                     AppendText("새로운 참가자 from " + client_socket);
-                    // User 당 하나씩 Thread 생성
+                   
                     UserService new_user = new UserService(client_socket);
-                    UserVec.add(new_user); // 새로운 참가자 배열에 추가
+                    UserVec.add(new_user); 
                     AppendText("사용자 입장. 현재 참가자 수 " + UserVec.size());
-                    new_user.start(); // 만든 객체의 스레드 실행
+                    new_user.start(); 
                 } catch (IOException e) {
                     AppendText("!!!! accept 에러 발생... !!!!");
                 }
@@ -143,11 +149,10 @@ public class ChatServer extends JFrame {
         private DataInputStream dis;
         private DataOutputStream dos;
         private Socket client_socket;
-        private Vector<UserService> user_vc; // 제네릭 타입 사용
+        private Vector<UserService> user_vc; 
         private String UserName = "";
 
         public UserService(Socket client_socket) {
-            // 매개변수로 넘어온 소켓 객체 저장 
             this.client_socket = client_socket;
             this.user_vc = UserVec;
             try {
@@ -167,6 +172,18 @@ public class ChatServer extends JFrame {
                 AppendText("userService error");
             }
         }
+        
+        public synchronized Room createRoom(String roomName, Vector<UserService> selectedUsers) {
+            int roomId = (++roomNum);
+            Room room = new Room(roomId, roomName);
+            roomMap.put(roomId, room);
+            for (UserService us : selectedUsers) {
+                room.addParticipant(us);
+                us.WriteOne("/roomCreated " + roomId + " " + roomName);
+            }
+            return room;
+        }
+
 
 
         public void logout() {
