@@ -10,27 +10,38 @@ public class UserSelectButton extends JButton {
     private boolean selected = false;
     private String username;
 
-    public UserSelectButton(String username) {
-        this.username = username;
+    public UserSelectButton(UserProfile profile) {
+        this.username = profile.getUsername();
 
+        // 1. 텍스트 설정
         setText(username);
-        setHorizontalAlignment(SwingConstants.CENTER);
-        setFocusPainted(false);
-
-        setOpaque(false);               
-        setContentAreaFilled(false);
-        
-        setForeground(Color.BLACK);
         setFont(new Font("맑은 고딕", Font.BOLD, 14));
-        
-        setBorder(BorderFactory.createLineBorder(new Color(161, 161, 161), 1));
+        setForeground(Color.BLACK);
 
-        // 크기 설정 유지
-        setPreferredSize(new Dimension(0, 50));
-        setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
-        setMinimumSize(new Dimension(0, 50));
+        // 2. 아이콘 설정 (프사 + username)
+        ImageIcon icon = profile.getIcon();
+        if (icon != null) {
+            Image img = icon.getImage().getScaledInstance(35, 35, Image.SCALE_SMOOTH);
+            setIcon(new ImageIcon(img));
+        }
+        setIconTextGap(15); 
 
-        // 선택 기능 유지
+        // 3. 정렬 및 스타일
+        setHorizontalAlignment(SwingConstants.LEFT); 
+        setFocusPainted(false);
+        setOpaque(false);                
+        setContentAreaFilled(false);
+        setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10) 
+        ));
+
+        // 크기 설정
+        setPreferredSize(new Dimension(0, 60)); 
+        setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        setMinimumSize(new Dimension(0, 60));
+
+        // 선택 기능
         addActionListener(e -> {
             selected = !selected;
             updateStyle();
@@ -47,12 +58,10 @@ public class UserSelectButton extends JButton {
 
     private void updateStyle() {
         if (selected) {
-            // 선택될 때만 파란 배경 등장
             setOpaque(true);
             setBackground(new Color(109, 135, 255)); 
             setForeground(Color.WHITE);
         } else {
-            // 선택 해제 시 완전 투명
             setOpaque(false);
             setBackground(new Color(0, 0, 0, 0));
             setForeground(Color.BLACK);

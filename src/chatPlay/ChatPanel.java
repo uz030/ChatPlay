@@ -4,7 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.net.URL; // URL 처리를 위해 추가
+import java.net.URL;
 import java.util.List;
 
 public class ChatPanel extends JPanel {
@@ -50,17 +50,12 @@ public class ChatPanel extends JPanel {
         btnCreate.setContentAreaFilled(false);
         btnCreate.setFocusPainted(false);
         btnCreate.setOpaque(false);
-
         btnCreate.setToolTipText("채팅방 생성");
         btnCreate.addActionListener(e -> createRoom());
-        
         btnCreate.setMargin(new Insets(0, 0, 0, 0));
-        
-        // 사이즈 설정 정리 (중복된 설정 제거 및 통일)
         btnCreate.setPreferredSize(new Dimension(30, 30)); 
         
         top.add(btnCreate);
-
         add(top, BorderLayout.NORTH);
 
         JList<ChatRoomData> list = new JList<>(parent.getRoomListModel());
@@ -83,20 +78,38 @@ public class ChatPanel extends JPanel {
     private void createRoom() {
         UserSelectDialog dialog = new UserSelectDialog(parent);
         dialog.setVisible(true);
+
         if (dialog.isOk()) {
             List<String> selected = dialog.getSelectedUsers();
-            String roomName = parent.getMyProfile().getUsername();
-            for (String u : selected) roomName += "," + u;
+            
+            // 방 이름 결정 로직
+            String inputName = dialog.getRoomNameInput();
+            String roomName;
+
+            if (inputName != null && !inputName.isEmpty()) {
+                roomName = inputName.replace(" ", "_"); 
+            } else {
+                // 입력 없으면 자동 생성 (나,친구1,친구2...)
+                roomName = parent.getMyProfile().getUsername();
+                for (String u : selected) roomName += "," + u;
+            }
+
+            // 서버 전송: /makeroom [방이름] [유저1] [유저2] ...
             StringBuilder cmd = new StringBuilder("/makeroom " + roomName);
             for (String u : selected) cmd.append(" ").append(u);
-            try { parent.getDos().writeUTF(cmd.toString()); } catch (Exception e) {}
+            
+            try { 
+                parent.getDos().writeUTF(cmd.toString()); 
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     private ImageIcon loadIcon(String path) {
         URL imgUrl = getClass().getResource(path);
         if (imgUrl == null) {
-            System.err.println("이미지를 찾을 수 없습니다: " + path);
+            // System.err.println("이미지를 찾을 수 없습니다: " + path);
             return null;
         }
         return new ImageIcon(imgUrl);
