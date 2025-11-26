@@ -40,7 +40,7 @@ public class ChatClientMain extends JFrame {
 
     public ChatClientMain() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setTitle("Chat Program");
+        setTitle("ChatPlay");
         setSize(392, 600);
         setLocationRelativeTo(null);
         setResizable(false);
