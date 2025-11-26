@@ -40,13 +40,14 @@ public class UserSelectDialog extends JDialog {
         }
 
         JScrollPane scroll = new JScrollPane(listPanel);
-        scroll.getViewport().setOpaque(false);
-        scroll.setOpaque(false);
-        scroll.setBorder(null);
+	     scroll.getViewport().setOpaque(true);
+	     scroll.getViewport().setBackground(Color.WHITE);
+	     scroll.setOpaque(true);
+	     scroll.setBackground(Color.WHITE);
+	     scroll.setBorder(null);
+	     ScrollUtil.applyCustomScrollBar(scroll);
+	     add(scroll, BorderLayout.CENTER);
 
-
-        ScrollUtil.applyCustomScrollBar(scroll);
-        add(scroll, BorderLayout.CENTER);
 
         JButton btnOk = new JButton("확인");
 
