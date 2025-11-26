@@ -4,8 +4,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List; 
 
 public class ChatClientMain extends JFrame {
 
@@ -123,6 +125,27 @@ public class ChatClientMain extends JFrame {
 
                     SwingUtilities.invokeLater(() -> roomListModel.addElement(newRoom));
                 }
+                
+                else if (msg.startsWith("/room_exited ")) {
+                    int roomId = Integer.parseInt(msg.split(" ")[1]);
+
+                    SwingUtilities.invokeLater(() -> {
+                        roomMap.remove(roomId);
+
+                        for (int i = 0; i < roomListModel.size(); i++) {
+                            if (roomListModel.get(i).getRoomId() == roomId) {
+                                roomListModel.remove(i);
+                                break;
+                            }
+                        }
+
+                        ChatRoomFrame frame = openedRoomFrames.get(roomId);
+                        if (frame != null) {
+                            frame.dispose();
+                        }
+                    });
+                }
+
 
                 // --- 채팅 메시지 ---
                 else if (msg.startsWith("/roommsg ")) {
@@ -154,19 +177,35 @@ public class ChatClientMain extends JFrame {
                     }
                 }
                 else if (msg.startsWith("/roomusers_result ")) {
+
                     String[] parts = msg.split(" ", 3);
-                    String list = parts[2];
+                    int roomId = Integer.parseInt(parts[1]);
+                    String listStr = parts[2];
 
-                    String display = list.replace(",", "\n");
+                    List<String> users = Arrays.asList(listStr.split(","));
 
-                    SwingUtilities.invokeLater(() ->
-                            JOptionPane.showMessageDialog(
-                                    null,
-                                    display,
-                                    "참여자 목록",
-                                    JOptionPane.INFORMATION_MESSAGE
-                            )
-                    );
+                    SwingUtilities.invokeLater(() -> {
+                        ChatRoomFrame frame = openedRoomFrames.get(roomId);
+                        Window owner = (frame != null) ? frame : this;
+
+                        UserListDialog dialog = new UserListDialog(
+                                owner,
+                                roomMap.get(roomId).getRoomName(),
+                                users,
+
+                                () -> {
+                                    if (frame != null) {
+                                        frame.getChatRoomPanel().openInviteDialog();
+                                    }
+                                },
+                                () -> {
+                                    try {
+                                        dos.writeUTF("/exitroom " + roomId);
+                                    } catch (Exception e) { e.printStackTrace(); }
+                                }
+                        );
+                        dialog.setVisible(true);
+                    });
                 }
 
             }

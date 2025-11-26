@@ -14,23 +14,16 @@ public class UserSelectDialog extends JDialog {
 
     private List<String> selectedUsers = new ArrayList<>();
     private boolean isOk = false;
-
+    
     public UserSelectDialog(ChatClientMain parent) {
-        super(parent, "대화상대 초대", true);
+        this(parent, parent);   
+    }
+    
+    public UserSelectDialog(Window owner, ChatClientMain parent) {
+        super(owner, "대화상대 초대", ModalityType.APPLICATION_MODAL);
         setSize(300, 400);
-        setLocationRelativeTo(parent);
+        setLocationRelativeTo(owner);  
         setLayout(new BorderLayout());
-
-        GradientTitlePanel titlePanel = new GradientTitlePanel();
-        titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-
-        JLabel title = new JLabel("초대할 친구 선택", SwingConstants.CENTER);
-        title.setFont(new Font("맑은 고딕", Font.BOLD, 14));
-
-        titlePanel.add(title, BorderLayout.CENTER);
-
-        add(titlePanel, BorderLayout.NORTH);
-
    
         JPanel listPanel = new JPanel();
         listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
@@ -107,32 +100,5 @@ public class UserSelectDialog extends JDialog {
     public boolean isOk() { return isOk; }
 
     public List<String> getSelectedUsers() { return selectedUsers; }
-    
-    class GradientTitlePanel extends JPanel {
-
-        private static final long serialVersionUID = 1L;
-
-        public GradientTitlePanel() {
-            setOpaque(false);
-            setLayout(new BorderLayout());
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g.create();
-
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            GradientPaint gp = new GradientPaint(
-                    0, 0, new Color(0xCF, 0xDC, 0xFC),
-                    getWidth(), 0, new Color(0xC7, 0xD4, 0xF7)
-            );
-
-            g2.setPaint(gp);
-            g2.fillRect(0, 0, getWidth(), getHeight());
-            g2.dispose();
-        }
-    }
 
 }
