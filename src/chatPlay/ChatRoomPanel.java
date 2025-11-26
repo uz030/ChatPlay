@@ -33,11 +33,7 @@ public class ChatRoomPanel extends JPanel {
 
         JLabel title = new JLabel(roomData.getRoomName(), SwingConstants.CENTER);
         title.setFont(new Font("맑은 고딕", Font.BOLD, 16));
-
-        JButton btnInvite = new JButton("초대 +");
-        btnInvite.setBackground(new Color(240, 240, 240));
-        btnInvite.addActionListener(e -> inviteFriend());
-
+      
         JButton btnUsers = new JButton("👥");
         btnUsers.setContentAreaFilled(false);
         btnUsers.setBorderPainted(false);
@@ -52,8 +48,6 @@ public class ChatRoomPanel extends JPanel {
         JPanel rightBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 5));
         rightBtns.setOpaque(false);
         rightBtns.add(btnUsers);
-        rightBtns.add(btnInvite);
-
         top.add(btnBack, BorderLayout.WEST);
         top.add(title, BorderLayout.CENTER);
         top.add(rightBtns, BorderLayout.EAST);
@@ -144,17 +138,30 @@ public class ChatRoomPanel extends JPanel {
 
 
     private void inviteFriend() {
-        UserSelectDialog dialog = new UserSelectDialog(parent);
+        Window owner = SwingUtilities.getWindowAncestor(this);
+
+        UserSelectDialog dialog = new UserSelectDialog(owner, parent);
         dialog.setVisible(true);
-        if(dialog.isOk()) {
-            List<String> users = dialog.getSelectedUsers();
-            for(String u : users) {
-                try { parent.getDos().writeUTF("/invite " + roomData.getRoomId() + " " + u); }
-                catch(Exception e) {}
+
+        if (dialog.isOk()) {
+            java.util.List<String> users = dialog.getSelectedUsers();
+            for (String u : users) {
+                try {
+                    parent.getDos().writeUTF("/invite " + roomData.getRoomId() + " " + u);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
+    }
+
+    
+    public void openInviteDialog() {
+        inviteFriend();
     }
     
     // 외부에서 룸 ID 확인용
     public int getRoomId() { return roomData.getRoomId(); }
+    
+    
 }

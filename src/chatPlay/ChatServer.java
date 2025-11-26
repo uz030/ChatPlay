@@ -267,25 +267,30 @@ public class ChatServer extends JFrame {
                                 }
                             }
                             break;
-
-                        case "/roommsg":
-                            if (args.length >= 3) {
+                            
+                        case "/exitroom":
+                            if (args.length >= 2) {
                                 int rId = Integer.parseInt(args[1]);
+                                Room room = server.roomMap.get(rId);
 
-                                String content =
-                                        msg.substring(msg.indexOf(args[2])).trim();
+                                if (room != null) {
+                                    // 방에서 해당 유저 제거
+                                    room.participants.remove(this);
 
-                                server.sendMsgToRoom(rId, userName, content);
+                                    // 나간 사실 다른 유저들에게 알림
+                                    room.broadcast("/roommsg " + rId + " System " + userName + "님이 방을 나갔습니다.");
 
-                                if (content.equals("@채팅봇")) {
-                                    server.sendMsgToRoom(
-                                            rId,
-                                            "ChatBot",
-                                            "BOT_MENU:뉴스,날씨,게임"
-                                    );
+                                    // 만약 방이 텅 비면 방 삭제(optional)
+                                    if (room.participants.isEmpty()) {
+                                        server.roomMap.remove(rId);
+                                    }
                                 }
+
+                                // 유저의 클라이언트에게 해당 방은 삭제되었다고 알려야 함
+                                WriteOne("/room_exited " + rId);
                             }
                             break;
+
 
                         case "/roomusers": {
                             if (args.length < 2) break;
@@ -304,6 +309,25 @@ public class ChatServer extends JFrame {
                             }
                             break;
                         }
+                        
+                        case "/roommsg":
+                            if (args.length >= 3) {
+                                int rId = Integer.parseInt(args[1]);
+
+                                String content =
+                                        msg.substring(msg.indexOf(args[2])).trim();
+
+                                server.sendMsgToRoom(rId, userName, content);
+
+                                if (content.equals("@채팅봇")) {
+                                    server.sendMsgToRoom(
+                                            rId,
+                                            "ChatBot",
+                                            "BOT_MENU:뉴스,날씨,게임"
+                                    );
+                                }
+                            }
+                            break;
                     }
 
                 } catch (IOException e) {

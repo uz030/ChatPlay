@@ -21,5 +21,7 @@ public class ChatRoomFrame extends JFrame {
         ChatRoomPanel panel = (ChatRoomPanel) getContentPane();
         panel.addBubble(msg);
     }
-
+    public ChatRoomPanel getChatRoomPanel() {
+        return panel;
+    }
 }
