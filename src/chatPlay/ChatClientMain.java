@@ -31,6 +31,8 @@ public class ChatClientMain extends JFrame {
     // 열린 채팅창 관리
     private Map<Integer, ChatRoomFrame> openedRoomFrames = new HashMap<>();
 
+    // 기본 프로필 이미지 
+    private ImageIcon defaultProfileIcon;
 
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> new ChatClientMain().setVisible(true));
@@ -42,6 +44,13 @@ public class ChatClientMain extends JFrame {
         setSize(392, 600);
         setLocationRelativeTo(null);
         setResizable(false);
+
+        // 기본 이미지 로드
+        try {
+            defaultProfileIcon = new ImageIcon(getClass().getResource("/images/basic_profile.png"));
+        } catch (Exception e) {
+            defaultProfileIcon = new ImageIcon();
+        }
 
         userListModel = new DefaultListModel<>();
         roomListModel = new DefaultListModel<>();
@@ -73,10 +82,8 @@ public class ChatClientMain extends JFrame {
 
             new Thread(this::listenToServer).start();
 
-            // ✔ 홈 화면으로 카드 전환 (필수)
+            // 홈 화면으로 전환 후 프로필 패널 표시
             cardLayout.show(mainContainer, "Home");
-
-            // ✔ 그 다음 ProfilePanel 띄우기
             homePanel.showProfilePanel();
 
         } catch (Exception ex) {
@@ -89,7 +96,6 @@ public class ChatClientMain extends JFrame {
             );
         }
     }
-
 
     private void listenToServer() {
         try {
@@ -136,39 +142,42 @@ public class ChatClientMain extends JFrame {
                     if (room != null) {
 
                         boolean isMine = sender.equals(myProfile.getUsername());
-                        ChatMessage chatMsg = new ChatMessage(sender, text, isMine);
+                        
+                        // 보낸 사람의 아이콘 찾기
+                        ImageIcon senderIcon;
+                        if (isMine) {
+                            senderIcon = myProfile.getIcon();
+                        } else {
+                            senderIcon = findUserIcon(sender);
+                        }
+
+                        // 아이콘 정보를 포함하여 메시지 객체 생성
+                        ChatMessage chatMsg = new ChatMessage(sender, text, isMine, senderIcon);
 
                         // 기록 저장
                         room.getMessageLog().addElement(chatMsg);
 
                         SwingUtilities.invokeLater(() -> {
-
-                            // 열린 채팅창이 있으면 → 창에 표시
+                            // 열린 채팅창이 있으면 창에 표시, 없으면 홈 리스트에 표시
                             if (openedRoomFrames.containsKey(rId)) {
                                 openedRoomFrames.get(rId).appendMessage(chatMsg);
                             } else {
-                                // 창이 닫혀있다면 → 홈 리스트에만 표시
                                 homePanel.appendMessageToRoom(rId, chatMsg);
                             }
                         });
                     }
                 }
+                
+                // --- 참여자 목록 확인 결과 ---
                 else if (msg.startsWith("/roomusers_result ")) {
                     String[] parts = msg.split(" ", 3);
                     String list = parts[2];
-
                     String display = list.replace(",", "\n");
 
                     SwingUtilities.invokeLater(() ->
-                            JOptionPane.showMessageDialog(
-                                    null,
-                                    display,
-                                    "참여자 목록",
-                                    JOptionPane.INFORMATION_MESSAGE
-                            )
+                            JOptionPane.showMessageDialog(null, display, "참여자 목록", JOptionPane.INFORMATION_MESSAGE)
                     );
                 }
-
             }
 
         } catch (IOException e) {
@@ -176,9 +185,22 @@ public class ChatClientMain extends JFrame {
         }
     }
 
-    /** 채팅방 열기 (중복 방지) */
-    public void enterChatRoom(ChatRoomData roomData) {
+    // 유저 이름으로 프로필 아이콘 찾는 메서드
+    private ImageIcon findUserIcon(String username) {
+        if (username.equals("ChatBot") || username.equals("System")) {
+            return defaultProfileIcon;
+        }
+        
+        for (int i = 0; i < userListModel.getSize(); i++) {
+            UserProfile user = userListModel.getElementAt(i);
+            if (user.getUsername().equals(username)) {
+                return user.getIcon();
+            }
+        }
+        return defaultProfileIcon;
+    }
 
+    public void enterChatRoom(ChatRoomData roomData) {
         int roomId = roomData.getRoomId();
 
         if (openedRoomFrames.containsKey(roomId)) {
@@ -200,11 +222,8 @@ public class ChatClientMain extends JFrame {
     }
 
     public ChatHome getHomePanel() { return homePanel; }
-
-
     public DataOutputStream getDos() { return dos; }
     public UserProfile getMyProfile() { return myProfile; }
-
     public DefaultListModel<UserProfile> getUserListModel() { return userListModel; }
     public DefaultListModel<ChatRoomData> getRoomListModel() { return roomListModel; }
 }

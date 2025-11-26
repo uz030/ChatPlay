@@ -2,6 +2,7 @@ package chatPlay;
 
 import javax.swing.*;
 import java.awt.*;
+import java.net.URL; 
 
 public class ChatHome extends JPanel {
 
@@ -58,7 +59,6 @@ public class ChatHome extends JPanel {
         refresh();
     }
 
-
     public void appendMessageToRoom(int roomId, ChatMessage msg) {
         if (centerPanel.getComponentCount() > 0) {
             Component current = centerPanel.getComponent(0);
@@ -90,11 +90,11 @@ public class ChatHome extends JPanel {
             btnPanel.setOpaque(false);
             btnPanel.setBorder(BorderFactory.createEmptyBorder(20, 5, 0, 5));
 
-            ImageIcon iconProfile = resizeIcon(new ImageIcon("src/images/friend.png"), 40, 40);
-            ImageIcon iconProfileHover = resizeIcon(new ImageIcon("src/images/friend_hover.png"), 40, 40);
+            ImageIcon iconProfile = loadIcon("/images/friend.png", 40, 40);
+            ImageIcon iconProfileHover = loadIcon("/images/friend_hover.png", 40, 40);
 
-            ImageIcon iconChat = resizeIcon(new ImageIcon("src/images/chat.png"), 40, 40);
-            ImageIcon iconChatHover = resizeIcon(new ImageIcon("src/images/chat_hover.png"), 40, 40);
+            ImageIcon iconChat = loadIcon("/images/chat.png", 40, 40);
+            ImageIcon iconChatHover = loadIcon("/images/chat_hover.png", 40, 40);
 
             JButton btnProfile = new JButton(iconProfile);
             JButton btnChat = new JButton(iconChat);
@@ -102,8 +102,13 @@ public class ChatHome extends JPanel {
             styleBtn(btnProfile);
             styleBtn(btnChat);
 
-            addHoverIcon(btnProfile, iconProfile, iconProfileHover);
-            addHoverIcon(btnChat, iconChat, iconChatHover);
+            // 호버 효과 추가 (이미지가 로드되었을 때만 적용)
+            if (iconProfile != null && iconProfileHover != null) {
+                addHoverIcon(btnProfile, iconProfile, iconProfileHover);
+            }
+            if (iconChat != null && iconChatHover != null) {
+                addHoverIcon(btnChat, iconChat, iconChatHover);
+            }
 
             btnProfile.addActionListener(e -> {
                 centerPanel.removeAll();
@@ -126,15 +131,14 @@ public class ChatHome extends JPanel {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             GradientPaint gp = new GradientPaint(
-                    0, 0, new Color(209, 204, 236, 178), // #D1CCEC + alpha 178 (70%)
-                    getWidth(), 0, new Color(212, 218, 254, 178) // #D4DAFE + alpha 178 (70%)
+                    0, 0, new Color(209, 204, 236, 178), // #D1CCEC + alpha
+                    getWidth(), 0, new Color(212, 218, 254, 178) // #D4DAFE + alpha
             );
 
             g2.setPaint(gp);
             g2.fillRect(0, 0, getWidth(), getHeight());
             g2.dispose();
         }
-
 
         private void styleBtn(JButton b) {
             b.setFocusPainted(false);
@@ -158,12 +162,18 @@ public class ChatHome extends JPanel {
             });
         }
 
-        private ImageIcon resizeIcon(ImageIcon icon, int w, int h) {
+        private ImageIcon loadIcon(String path, int w, int h) {
+            URL imgUrl = getClass().getResource(path);
+            
+            if (imgUrl == null) {
+                System.err.println("이미지를 찾을 수 없습니다 (경로 확인 필요): " + path);
+                return null; 
+            }
+
+            ImageIcon icon = new ImageIcon(imgUrl);
             Image img = icon.getImage();
             Image newImg = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
             return new ImageIcon(newImg);
         }
     }
-
-
 }

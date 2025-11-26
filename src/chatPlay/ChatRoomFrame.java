@@ -1,11 +1,11 @@
 package chatPlay;
 
 import javax.swing.*;
-import java.awt.*;
 
 public class ChatRoomFrame extends JFrame {
 
-    private ChatRoomPanel panel;
+	private static final long serialVersionUID = 1L;
+	private ChatRoomPanel panel;
 
     public ChatRoomFrame(ChatClientMain parent, ChatRoomData roomData) {
         setTitle(roomData.getRoomName());
