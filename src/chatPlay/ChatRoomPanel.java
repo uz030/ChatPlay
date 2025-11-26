@@ -2,7 +2,6 @@ package chatPlay;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.List;
 
 public class ChatRoomPanel extends JPanel {
 
@@ -90,7 +89,7 @@ public class ChatRoomPanel extends JPanel {
     }
 
     public void addBubble(ChatMessage msg) {
-        ChatBubblePanel bubble = new ChatBubblePanel(msg);
+        ChatBubblePanel bubble = new ChatBubblePanel(msg, null);
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);

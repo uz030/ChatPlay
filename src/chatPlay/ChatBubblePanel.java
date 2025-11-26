@@ -2,13 +2,15 @@ package chatPlay;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
 
 public class ChatBubblePanel extends JPanel {
-  
+    
     private static final long serialVersionUID = 1L;
     private static final int MAX_W = 220; 
 
-    public ChatBubblePanel(ChatMessage msg) {
+    // 생성자 (ActionListener 포함 버전 - 챗봇 기능용)
+    public ChatBubblePanel(ChatMessage msg, ActionListener onBotMenuClick) {
         setLayout(new BorderLayout());
         setOpaque(false);
         setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
@@ -16,7 +18,6 @@ public class ChatBubblePanel extends JPanel {
         // 1. 시스템 메시지
         if (msg.getSender().equals("System")) {
             JPanel sysBubble = new JPanel() {
-                @Override
                 protected void paintComponent(Graphics g) {
                     super.paintComponent(g);
                     Graphics2D g2 = (Graphics2D) g;
@@ -28,41 +29,37 @@ public class ChatBubblePanel extends JPanel {
             sysBubble.setLayout(new BorderLayout());
             sysBubble.setOpaque(false);
             sysBubble.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
-
             JLabel label = new JLabel(msg.getContent(), SwingConstants.CENTER);
             label.setForeground(new Color(70, 70, 70));
             label.setFont(new Font("맑은 고딕", Font.PLAIN, 13));
-
             sysBubble.add(label, BorderLayout.CENTER);
-
             JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 8));
             wrapper.setOpaque(false);
             wrapper.add(sysBubble);
-
             add(wrapper, BorderLayout.CENTER);
             return;  
         }
 
         // 2. 챗봇 메시지
         if (msg.isBotMessage()) {
-            add(createBotPanel(msg), BorderLayout.WEST);
+            add(createBotPanel(msg, onBotMenuClick), BorderLayout.WEST);
         } 
-        
-        // 3. 일반 유저 메시지
+        // 3. 일반 메시지
         else {
             if (msg.isMine()) {
-
+                // [나] 오른쪽 정렬
                 JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
                 rightPanel.setOpaque(false);
                 rightPanel.add(createBubble(msg, true));
                 add(rightPanel, BorderLayout.EAST);
             } else {
-                
+                // 전체 컨테이너 (이미지 + 내용)
                 JPanel container = new JPanel(new BorderLayout(8, 0)); // 수평 간격 8
                 container.setOpaque(false);
 
                 // (1) 프로필 사진 (왼쪽 상단)
                 JLabel iconLabel = new JLabel(getScaledIcon(msg.getSenderIcon(), 40, 40));
+                // 상단 정렬을 위해 패널로 감쌈
                 JPanel iconPanel = new JPanel(new BorderLayout());
                 iconPanel.setOpaque(false);
                 iconPanel.add(iconLabel, BorderLayout.NORTH);
@@ -90,7 +87,23 @@ public class ChatBubblePanel extends JPanel {
             }
         }
     }
+    
+    private ImageIcon getScaledIcon(ImageIcon src, int w, int h) {
+        if (src == null) {
+            try {
+                src = new ImageIcon(getClass().getResource("/images/basic_profile.png"));
+            } catch(Exception e) {
+                return new ImageIcon();
+            }
+        }
+        if (src.getImage() == null) return new ImageIcon();
 
+        Image img = src.getImage();
+        Image newImg = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+        return new ImageIcon(newImg);
+    }
+
+    // 말풍선 생성
     private JPanel createBubble(ChatMessage msg, boolean isMine) {
         JTextArea area = new JTextArea(msg.getContent());
         Font font = new Font("맑은 고딕", Font.PLAIN, 14);
@@ -104,7 +117,6 @@ public class ChatBubblePanel extends JPanel {
         Canvas c = new Canvas();
         FontMetrics fm = c.getFontMetrics(font);
         int textWidth = fm.stringWidth(msg.getContent());
-        
         int bubbleWidth = Math.min(textWidth, MAX_W) + 24; 
         
         area.setSize(new Dimension(bubbleWidth, Short.MAX_VALUE));
@@ -112,7 +124,6 @@ public class ChatBubblePanel extends JPanel {
         area.setPreferredSize(new Dimension(bubbleWidth, prefSize.height));
 
         JPanel bubble = new JPanel(new BorderLayout()) {
-            @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -124,11 +135,11 @@ public class ChatBubblePanel extends JPanel {
         bubble.setOpaque(false);
         bubble.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10)); 
         bubble.add(area);
-        
         return bubble;
     }
 
-    private JPanel createBotPanel(ChatMessage msg) {
+    // 봇 패널 생성
+    private JPanel createBotPanel(ChatMessage msg, ActionListener onBotMenuClick) {
         JPanel botPanel = new JPanel(new BorderLayout());
         botPanel.setOpaque(false);
         
@@ -146,7 +157,8 @@ public class ChatBubblePanel extends JPanel {
             btn.setBackground(Color.WHITE);
             btn.setFocusPainted(false);
             btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            btn.addActionListener(e -> JOptionPane.showMessageDialog(this, "[" + m + "] 기능 준비 중!"));
+            btn.setActionCommand(m);
+            btn.addActionListener(onBotMenuClick); // 리스너 연결
             btnContainer.add(btn);
         }
 
@@ -156,20 +168,5 @@ public class ChatBubblePanel extends JPanel {
         bgPanel.add(btnContainer);
         botPanel.add(bgPanel, BorderLayout.CENTER);
         return botPanel;
-    }
-
-    private ImageIcon getScaledIcon(ImageIcon src, int w, int h) {
-        if (src == null) {
-            try {
-                src = new ImageIcon(getClass().getResource("/images/basic_profile.png"));
-            } catch(Exception e) {
-                return new ImageIcon();
-            }
-        }
-        if (src.getImage() == null) return new ImageIcon();
-
-        Image img = src.getImage();
-        Image newImg = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
-        return new ImageIcon(newImg);
     }
 }

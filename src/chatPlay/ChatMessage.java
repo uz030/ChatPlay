@@ -18,6 +18,7 @@ public class ChatMessage {
     public String getSender() { return sender; }
     public String getContent() { return content; }
     public boolean isMine() { return isMine; }
+    
     public ImageIcon getSenderIcon() { return senderIcon; }
 
     public boolean isBotMessage() {

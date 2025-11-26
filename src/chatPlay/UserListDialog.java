@@ -6,6 +6,9 @@ import java.util.List;
 
 public class UserListDialog extends JDialog {
 
+
+	private static final long serialVersionUID = 1L;
+
 	public UserListDialog(Window owner,String roomName, List<String> users, Runnable onInvite, Runnable onExitRoom) {
 		
 		super(owner, "👥 참여자 목록", ModalityType.APPLICATION_MODAL);
