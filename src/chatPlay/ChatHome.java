@@ -1,108 +1,169 @@
 package chatPlay;
 
-
 import javax.swing.*;
-
 import java.awt.*;
 
 public class ChatHome extends JPanel {
 
+    private static final long serialVersionUID = 1L;
     private ChatClientMain parentFrame;
-    private String username;
-    private JPanel centerPanel; // 🔹 중앙 패널 참조
+    private JPanel centerPanel;
+    private ChatPanel chatListPanel;
+    private JPanel homeWelcomePanel;
 
     public ChatHome(ChatClientMain parentFrame) {
         this.parentFrame = parentFrame;
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
 
-        // 🔹 왼쪽 메뉴 패널
-        MenuPanel menu = new MenuPanel();
-        add(menu, BorderLayout.WEST);
+        chatListPanel = new ChatPanel(parentFrame);
+        createWelcomePanel();
 
-        // 🔹 중앙 패널 (기본: 홈화면)
         centerPanel = new JPanel(new BorderLayout());
-        JLabel lbl = new JLabel("여기가 ChatHome 화면입니다.", SwingConstants.CENTER);
-        lbl.setFont(new Font("맑은 고딕", Font.PLAIN, 15));
-        centerPanel.add(lbl, BorderLayout.CENTER);
+        centerPanel.add(homeWelcomePanel, BorderLayout.CENTER);
+
+        add(new MenuPanel(), BorderLayout.WEST);
         add(centerPanel, BorderLayout.CENTER);
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    private void createWelcomePanel() {
+        homeWelcomePanel = new JPanel();
+        homeWelcomePanel.setLayout(new BoxLayout(homeWelcomePanel, BoxLayout.Y_AXIS));
+        homeWelcomePanel.setBackground(Color.WHITE);
+
+        JLabel title = new JLabel("ChatPlay 홈");
+        title.setFont(new Font("맑은 고딕", Font.BOLD, 24));
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        homeWelcomePanel.add(Box.createVerticalGlue());
+        homeWelcomePanel.add(title);
+        homeWelcomePanel.add(Box.createVerticalGlue());
     }
 
-    // 🔹 내부 메뉴 클래스
+    public void showChatRoom(ChatRoomData roomData) {
+        centerPanel.removeAll();
+        centerPanel.add(new ChatRoomPanel(parentFrame, roomData), BorderLayout.CENTER);
+        refresh();
+    }
+
+    public void restoreChatList() {
+        centerPanel.removeAll();
+        centerPanel.add(chatListPanel, BorderLayout.CENTER);
+        refresh();
+    }
+
+    public void showProfilePanel() {
+        centerPanel.removeAll();
+        centerPanel.add(new ProfilePanel(parentFrame), BorderLayout.CENTER);
+        refresh();
+    }
+
+
+    public void appendMessageToRoom(int roomId, ChatMessage msg) {
+        if (centerPanel.getComponentCount() > 0) {
+            Component current = centerPanel.getComponent(0);
+            if (current instanceof ChatRoomPanel) {
+                ChatRoomPanel panel = (ChatRoomPanel) current;
+                if (panel.getRoomId() == roomId) {
+                    panel.addBubble(msg);
+                }
+            }
+        }
+    }
+
+    private void refresh() {
+        centerPanel.revalidate();
+        centerPanel.repaint();
+    }
+
     class MenuPanel extends JPanel {
+
+        private static final long serialVersionUID = 1L;
+
         public MenuPanel() {
             setLayout(new BorderLayout());
-            setBackground(new Color(230, 235, 255));
-            setPreferredSize(new Dimension(65, 200)); // 왼쪽 고정 폭
+            setOpaque(false); // paintComponent로 배경 직접 칠할 거라 false
 
-            // 🔸 버튼들
-            JPanel btnPanel = new JPanel();
+            setPreferredSize(new Dimension(80, 0));
+
+            JPanel btnPanel = new JPanel(new GridLayout(3, 1, 0, 10));
             btnPanel.setOpaque(false);
-            btnPanel.setLayout(new GridLayout(3, 1, 0, 0));
-            btnPanel.setPreferredSize(new Dimension(65, 130));
-            // 버튼 생성
-            JButton btnProfile = createImageButton("/images/friend.png");
-            JButton btnChat = createImageButton("/images/chat.png");
-            // 액션 리스너
-            btnProfile.addActionListener(e -> switchPanel(new ProfilePanel(username)));
-            btnChat.addActionListener(e -> switchPanel(new ChatPanel()));
+            btnPanel.setBorder(BorderFactory.createEmptyBorder(20, 5, 0, 5));
+
+            ImageIcon iconProfile = resizeIcon(new ImageIcon("src/images/friend.png"), 40, 40);
+            ImageIcon iconProfileHover = resizeIcon(new ImageIcon("src/images/friend_hover.png"), 40, 40);
+
+            ImageIcon iconChat = resizeIcon(new ImageIcon("src/images/chat.png"), 40, 40);
+            ImageIcon iconChatHover = resizeIcon(new ImageIcon("src/images/chat_hover.png"), 40, 40);
+
+            JButton btnProfile = new JButton(iconProfile);
+            JButton btnChat = new JButton(iconChat);
+
+            styleBtn(btnProfile);
+            styleBtn(btnChat);
+
+            addHoverIcon(btnProfile, iconProfile, iconProfileHover);
+            addHoverIcon(btnChat, iconChat, iconChatHover);
+
+            btnProfile.addActionListener(e -> {
+                centerPanel.removeAll();
+                centerPanel.add(new ProfilePanel(parentFrame), BorderLayout.CENTER);
+                refresh();
+            });
+
+            btnChat.addActionListener(e -> restoreChatList());
 
             btnPanel.add(btnProfile);
             btnPanel.add(btnChat);
-
-            add(btnPanel, BorderLayout.CENTER);
+            add(btnPanel, BorderLayout.NORTH);
         }
 
-        private JButton createImageButton(String imagePath) {
-            JButton btn = new JButton();
-
-            // 이미지 로드
-            ImageIcon icon = new ImageIcon(getClass().getResource(imagePath));
-            Image img = icon.getImage().getScaledInstance(24, 24, Image.SCALE_SMOOTH);
-            btn.setIcon(new ImageIcon(img));
-
-            // 버튼 모양 지우기
-            btn.setBorderPainted(false);
-            btn.setContentAreaFilled(false);
-            btn.setFocusPainted(false);
-            btn.setOpaque(false);
-            
-
-            
-
-            // 마우스 커서 변경
-            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-            return btn;
-        }
-
-        // 🔹 중앙 패널 교체 메서드
-        private void switchPanel(JPanel newPanel) {
-            centerPanel.removeAll();
-            centerPanel.add(newPanel, BorderLayout.CENTER);
-            centerPanel.revalidate();
-            centerPanel.repaint();
-        }
-        
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g;
+            Graphics2D g2 = (Graphics2D) g.create();
+
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             GradientPaint gp = new GradientPaint(
-                    0, 0, new Color(226, 232, 255),   // #C8D4FF
-                    getWidth(), 0, new Color(227, 224, 250) // #C7C2F4
+                    0, 0, new Color(209, 204, 236, 178), // #D1CCEC + alpha 178 (70%)
+                    getWidth(), 0, new Color(212, 218, 254, 178) // #D4DAFE + alpha 178 (70%)
             );
 
             g2.setPaint(gp);
             g2.fillRect(0, 0, getWidth(), getHeight());
+            g2.dispose();
+        }
+
+
+        private void styleBtn(JButton b) {
+            b.setFocusPainted(false);
+            b.setBorderPainted(false);
+            b.setContentAreaFilled(false);
+            b.setOpaque(false);
+            b.setMargin(new Insets(0, 0, 0, 0));
+        }
+
+        private void addHoverIcon(JButton b, ImageIcon normal, ImageIcon hover) {
+            b.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseEntered(java.awt.event.MouseEvent evt) {
+                    b.setIcon(hover);
+                }
+
+                @Override
+                public void mouseExited(java.awt.event.MouseEvent evt) {
+                    b.setIcon(normal);
+                }
+            });
+        }
+
+        private ImageIcon resizeIcon(ImageIcon icon, int w, int h) {
+            Image img = icon.getImage();
+            Image newImg = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            return new ImageIcon(newImg);
         }
     }
 
-    
+
 }

@@ -1,28 +1,13 @@
 package chatPlay;
 
-import java.awt.EventQueue;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.Vector;
-
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.SwingConstants;
-import javax.swing.border.EmptyBorder;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class ChatServer extends JFrame {
 
@@ -31,27 +16,18 @@ public class ChatServer extends JFrame {
     JTextArea textArea;
     private JTextField txtPortNumber;
 
-    private ServerSocket socket; 
-    private Socket client_socket; 
-    private  Vector<UserService> UserVec = new Vector<>();
-    
-    private HashMap<Integer, Room> roomMap = new HashMap<>();
-    private int roomNum = 0;
-    
-    private static final int BUF_LEN = 128; // Windows 처럼 BUF_LEN 을 정의
+    private ServerSocket socket;
+    private Vector<UserService> UserVec = new Vector<>();
+    private Map<Integer, Room> roomMap = new HashMap<>();
+    private int roomNumCounter = 0;
 
-    /**
-     * Launch the application.
-     */
-    public static void main(String[] args) {   
-        EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                try {
-                    ChatServer frame = new ChatServer();      
-                    frame.setVisible(true);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> {
+            try {
+                ChatServer frame = new ChatServer();
+                frame.setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         });
     }
@@ -59,12 +35,14 @@ public class ChatServer extends JFrame {
     public ChatServer() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBounds(100, 100, 338, 386);
+
         contentPane = new JPanel();
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         setContentPane(contentPane);
         contentPane.setLayout(null);
 
         JScrollPane scrollPane = new JScrollPane();
+        ScrollUtil.applyCustomScrollBar(scrollPane);
         scrollPane.setBounds(12, 10, 300, 244);
         contentPane.add(scrollPane);
 
@@ -72,228 +50,267 @@ public class ChatServer extends JFrame {
         textArea.setEditable(false);
         scrollPane.setViewportView(textArea);
 
-        JLabel lblNewLabel = new JLabel("Port Number");
-        lblNewLabel.setBounds(12, 264, 87, 26);
-        contentPane.add(lblNewLabel);
+        JLabel lblPort = new JLabel("Port Number");
+        lblPort.setBounds(12, 264, 87, 26);
+        contentPane.add(lblPort);
 
         txtPortNumber = new JTextField();
         txtPortNumber.setHorizontalAlignment(SwingConstants.CENTER);
         txtPortNumber.setText("30000");
         txtPortNumber.setBounds(111, 264, 199, 26);
         contentPane.add(txtPortNumber);
-        txtPortNumber.setColumns(10);
 
         JButton btnServerStart = new JButton("Server Start");
-        btnServerStart.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                try {
-                    socket = new ServerSocket(Integer.parseInt(txtPortNumber.getText()));
-                } catch (NumberFormatException | IOException e1) {
-                    e1.printStackTrace();
-                }
+        btnServerStart.addActionListener(e -> {
+            try {
+                socket = new ServerSocket(Integer.parseInt(txtPortNumber.getText()));
                 AppendText("Chat Server Running..");
-                btnServerStart.setText("Chat Server Running..");
                 btnServerStart.setEnabled(false);
                 txtPortNumber.setEnabled(false);
-                AcceptServer accept_server = new AcceptServer();  
-                accept_server.start();
+                new AcceptServer().start();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                AppendText("Server Start Error: " + ex.getMessage());
             }
         });
         btnServerStart.setBounds(12, 300, 300, 35);
         contentPane.add(btnServerStart);
     }
 
-    
-  
     class AcceptServer extends Thread {
         public void run() {
-            while (true) { 
+            while (true) {
                 try {
                     AppendText("Waiting clients ...");
-                    client_socket = socket.accept(); 
-                    AppendText("새로운 참가자 from " + client_socket);
-                   
-                    UserService new_user = new UserService(client_socket);
-                    UserVec.add(new_user); 
-                    AppendText("사용자 입장. 현재 참가자 수 " + UserVec.size());
-                    new_user.start(); 
+                    Socket clientSocket = socket.accept();
+                    AppendText("새 클라이언트 연결됨: " + clientSocket);
+
+                    UserService newUser = new UserService(clientSocket, ChatServer.this);
+                    UserVec.add(newUser);
+                    newUser.start();
+
+                    broadcastUserList();
+
                 } catch (IOException e) {
-                    AppendText("!!!! accept 에러 발생... !!!!");
+                    AppendText("Accept Error");
                 }
             }
         }
     }
-    // 지금은 보다 심플한 코드를 위해 서버는 계속 켜져 있는 것으로 가정하였으나(AcceptServer 스레스 종료 X)
-    // 서버를 정상적으로 종료하고 싶은 경우, 서버 GUI에 종료 버튼을 만들어 서버소켓을 닫는 스레드를 추가로 만들거나,
-    // 또는 GUI 창이 닫히는 순간(addWindowListener의 windowClosing 메서드 등에서)
-    // ServerSocket.close()를 호출하여 accept()를 깨워서 AcceptServer를 종료하는 방법이나 플래그 신호 사용 방법 등이 있을 수 있음
-    
-    
-    //JtextArea에 문자열을 출력해 주는 기능을 수행하는 맴버 함수
+
     public void AppendText(String str) {
-        textArea.append(str + "\n");   //전달된 문자열 str을 textArea에 추가
-        textArea.setCaretPosition(textArea.getText().length());  // textArea의 커서(캐럿) 위치를 텍스트 영역의 마지막으로 이동
+        textArea.append(str + "\n");
+        textArea.setCaretPosition(textArea.getText().length());
     }
 
-    
-    // User 당 생성되는 Thread, 유저의 수만큼 스레스 생성
-    // 이 UserService 스레드는 '소켓 객체'를 이용해서 실제 특정 유저와 메시지를 주고 받는 기능을 수행하는 스레드
-    // 이 스레드 클래스의 run() 메소드 안의 dis.readUTF()에서 대기하다가 메시지가 들어오면 -> Write All로 전체 접속한 사용자한테 전송(단톡방) 
+    public synchronized void broadcastUserList() {
+        String userListStr = UserVec.stream()
+                .map(UserService::getUserName)
+                .filter(name -> !name.isEmpty())
+                .collect(Collectors.joining(","));
+
+        WriteAll("/userlist " + userListStr);
+    }
+
+    public synchronized void WriteAll(String msg) {
+        for (UserService user : UserVec) {
+            user.WriteOne(msg);
+        }
+    }
+
+    public synchronized void createRoom(String roomName, Vector<UserService> members) {
+        int roomId = ++roomNumCounter;
+
+        Room room = new Room(roomId, roomName, members);
+        roomMap.put(roomId, room);
+
+        AppendText("방 생성: " + roomName);
+
+        room.broadcast("/roomCreated " + roomId + " " + roomName);
+    }
+
+    public synchronized void sendMsgToRoom(int roomId, String sender, String msg) {
+        Room room = roomMap.get(roomId);
+        if (room != null) {
+            room.broadcast("/roommsg " + roomId + " " + sender + " " + msg);
+        }
+    }
+
+    class Room {
+        int roomId;
+        String roomName;
+        Vector<UserService> participants;
+
+        public Room(int roomId, String roomName, Vector<UserService> participants) {
+            this.roomId = roomId;
+            this.roomName = roomName;
+            this.participants = participants;
+        }
+
+        public void broadcast(String msg) {
+            for (UserService u : participants) {
+                u.WriteOne(msg);
+            }
+        }
+    }
+
     class UserService extends Thread {
-    	//참고로 서버와 클라이언트 사이의 1:1 채팅이 아니기 때문에 
-    	//(서버에서는) 서버가 스스로 메시지를 먼저 보낼 일이 없으니(한 클라이언트한테 받은 메시지를 다른 클라이언트들한테 전달만 하면 됩니다)
-    	//따라서 run() 안에 작성되어 있는 '보내는 기능을 수행하는 코드'와 '받는 기능을 수행하는 코드'를 이 서버에서는 스레드로 분리할 필요가 없음
-    	
-        private InputStream is;
-        private OutputStream os;
         private DataInputStream dis;
         private DataOutputStream dos;
-        private Socket client_socket;
-        private Vector<UserService> user_vc; 
-        private String UserName = "";
+        private Socket clientSocket;
+        private String userName = "";
+        private ChatServer server;
 
-        public UserService(Socket client_socket) {
-            this.client_socket = client_socket;
-            this.user_vc = UserVec;
+        public UserService(Socket clientSocket, ChatServer server) {
+            this.clientSocket = clientSocket;
+            this.server = server;
+
             try {
-                is = client_socket.getInputStream();
-                dis = new DataInputStream(is);
-                os = client_socket.getOutputStream();
-                dos = new DataOutputStream(os);
-                String line1 = dis.readUTF();      // 제일 처음 연결되면 클라이언트의 SendMessage("/login " + UserName);에 의해 "/login UserName" 문자열이 들어옴
-                String[] msg = line1.split(" ");   //line1이라는 문자열을 공백(" ")을 기준으로 분할
-                UserName = msg[1].trim();          //분할된 문자열 배열 msg의 두 번째 요소(인덱스 1)를 가져와 trim 메소드를 사용하여 앞뒤의 공백을 제거
-                AppendText("새로운 참가자 " + UserName + " 입장.");
-                WriteOne("Welcome to Java chat server\n");
-                WriteOne(UserName + "님 환영합니다.\n"); // 연결된 사용자에게 정상접속을 알림
-                String br_msg ="["+UserName+"]님이 입장 하였습니다.\n";    //broadcastMessage 생성 [추가]
-                WriteAll(br_msg); // broadcastMessage 전송, 아직 user_vc에 새로 입장한 user는 포함되지 않았으므로 새로운 참가자한테는 전송하지 않음 [추가]
+                dis = new DataInputStream(clientSocket.getInputStream());
+                dos = new DataOutputStream(clientSocket.getOutputStream());
+
+                String loginMsg = dis.readUTF();
+                this.userName = loginMsg.split(" ")[1].trim();
+
+                AppendText("유저 입장: " + userName);
+                WriteOne(userName + "님 환영합니다.");
+
             } catch (Exception e) {
-                AppendText("userService error");
+                AppendText("UserService Init Error");
             }
         }
-        
-        public synchronized Room createRoom(String roomName, Vector<UserService> selectedUsers) {
-            int roomId = (++roomNum);
-            Room room = new Room(roomId, roomName);
-            roomMap.put(roomId, room);
-            for (UserService us : selectedUsers) {
-                room.addParticipant(us);
-                us.WriteOne("/roomCreated " + roomId + " " + roomName);
-            }
-            return room;
-        }
 
+        public String getUserName() { return userName; }
 
-
-        public void logout() {
-            UserVec.removeElement(this); // 에러가난 현재 객체를 벡터에서 지운다
-        	String br_msg ="["+UserName+"]님이 퇴장 하였습니다.\n";   // 다른 User들에게 전송할 메시지 생성  [추가]
-        	WriteAll(br_msg); // 다른 User들에게 전송  [추가]
-            AppendText("사용자 퇴장. 현재 참가자 수 " + UserVec.size());
-        }
-        
-        // 클라이언트로 메시지 전송
         public void WriteOne(String msg) {
             try {
                 dos.writeUTF(msg);
             } catch (IOException e) {
-                AppendText("dos.write() error");
-                try {
-                    dos.close();
-                    dis.close();
-                    client_socket.close();
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
-                logout();
+                removeClient();
             }
         }
 
-        
-        //모든 다중 클라이언트에게 순차적으로 채팅 메시지 전달
-        public void WriteAll(String str) {  
-            for (int i = 0; i < user_vc.size(); i++) {
-            	UserService user = user_vc.get(i);     // get(i) 메소드는 user_vc 컬렉션의 i번째 요소를 반환
-                user.WriteOne(str);
+        /** 클라이언트 연결 종료 */
+        private void removeClient() {
+
+            server.UserVec.remove(this);
+
+            // 참여 중이던 방에서 제거 + 퇴장 메시지 방송
+            for (Room room : server.roomMap.values()) {
+                if (room.participants.contains(this)) {
+                    room.participants.remove(this);
+
+                    room.broadcast(
+                            "/roommsg " + room.roomId + " System " + userName + "님이 퇴장했습니다."
+                    );
+                }
             }
+
+            server.broadcastUserList();
+
+            try { clientSocket.close(); } catch (IOException e) { }
         }
-        
-        
+
         public void run() {
-        	// dis.readUTF()에서 대기하다가 메시지가 들어오면 -> Write All로 전체 접속한 사용자한테 메시지 전송(단톡방), 이걸 클라이언트별로 무한히 실행
-        	// 추가적으로 지금은 dis.readUTF()에서 예외가 발생하면 '예외처리에 의해 정상적으로 스레드가 종료하게 작성'되었으나
-        	// '/exit'가 들어와도 종료하게 코드를 추가하면 더 완성도 있는 코드가 됩니다.
-        	// 지금은 다양한 사용자 프로토콜(/list, /to, /exit 등)을 정의하고 있지 않지만 추후 /exit 프로토콜 등의 정의시 추가
             while (true) {
                 try {
-                    String msg = dis.readUTF(); 
-                    msg = msg.trim();   //msg를 가져와 trim 메소드를 사용하여 앞뒤의 공백을 제거
-                    AppendText(msg); // server 화면에 출력
-                    
-                    String[] args = msg.split(" "); // 명령어와 매개변수 분리
-                    
-                    // 명령어 처리
-                    switch (args[1]) {
-                        case "/exit": // 종료 명령
-                            logout(); // 사용자 로그아웃 처리
-                            return; // 스레드 종료
+                    String msg = dis.readUTF().trim();
+                    AppendText(msg);
 
-                        case "/list": // 접속자 목록 보기
-                            WriteOne("**현재 사용자 목록**\n");
-                            for (int i = 0; i < user_vc.size(); i++) {
-                                UserService user = user_vc.get(i); // 명시적인 인덱스 접근
-                                WriteOne("- " + user.UserName + "\n");
+                    String[] args = msg.split(" ");
+                    if (args.length < 1) continue;
+
+                    switch (args[0]) {
+
+                        case "/makeroom":
+                            if (args.length >= 2) {
+                                String rName = args[1];
+                                Vector<UserService> members = new Vector<>();
+                                members.add(this);
+
+                                for (int i = 2; i < args.length; i++) {
+                                    for (UserService u : server.UserVec) {
+                                        if (u.userName.equals(args[i])) {
+                                            members.add(u);
+                                            break;
+                                        }
+                                    }
+                                }
+                                server.createRoom(rName, members);
                             }
                             break;
 
-                        case "/to": // 귓속말 처리, [홍길동] /to 신데렐라 안녕~ 반갑다. ^^\n
-                            if (args.length < 4) {
-                                WriteOne("사용법: /to [username] [message]\n");
-                                break;
-                            }
-                            String targetUser = args[2];
-                            String privateMessage = "";
-                            for (int i = 3; i < args.length; i++) {
-                                privateMessage += args[i];
-                                if (i < args.length - 1) privateMessage += " ";
-                            }
-                            boolean found = false;
-                            for (int i = 0; i < user_vc.size(); i++) {
-                                UserService user = user_vc.get(i); // 명시적인 인덱스 접근
-                                if (user.UserName.equals(targetUser)) {
-                                    user.WriteOne("[" + UserName + "님의 귓속말] " + privateMessage + "\n");
-                                    WriteOne("[" + UserName + "님의 귓속말] " + privateMessage + "\n");
-                                    found = true;
-                                    break;
+                        case "/invite":
+                            if (args.length >= 3) {
+                                int rId = Integer.parseInt(args[1]);
+                                String targetName = args[2];
+
+                                Room room = server.roomMap.get(rId);
+                                if (room != null) {
+
+                                    for (UserService u : server.UserVec) {
+                                        if (u.userName.equals(targetName)
+                                                && !room.participants.contains(u)) {
+
+                                            room.participants.add(u);
+
+                                            u.WriteOne("/roomCreated " + rId + " " + room.roomName);
+
+                                            server.sendMsgToRoom(
+                                                    rId,
+                                                    "System",
+                                                    userName + "님이 " + targetName + "님을 초대했습니다."
+                                            );
+                                            break;
+                                        }
+                                    }
                                 }
                             }
-                            if (!found) {
-                                WriteOne("사용자 " + targetUser + "를 찾을 수 없습니다.\n");
+                            break;
+
+                        case "/roommsg":
+                            if (args.length >= 3) {
+                                int rId = Integer.parseInt(args[1]);
+
+                                String content =
+                                        msg.substring(msg.indexOf(args[2])).trim();
+
+                                server.sendMsgToRoom(rId, userName, content);
+
+                                if (content.equals("@채팅봇")) {
+                                    server.sendMsgToRoom(
+                                            rId,
+                                            "ChatBot",
+                                            "BOT_MENU:뉴스,날씨,게임"
+                                    );
+                                }
                             }
                             break;
 
-                        default: // 일반 메시지 처리
-                            WriteAll(msg + "\n"); // 모든 사용자에게 전송
+                        case "/roomusers": {
+                            if (args.length < 2) break;
+
+                            int rId = Integer.parseInt(args[1]);
+                            Room room = server.roomMap.get(rId);
+                            if (room != null) {
+
+                                // 참가자 이름만 뽑기
+                                String list = room.participants.stream()
+                                        .map(u -> u.userName)
+                                        .collect(Collectors.joining(","));
+
+                                // 요청한 유저에게만 전송
+                                WriteOne("/roomusers_result " + rId + " " + list);
+                            }
                             break;
+                        }
                     }
-                    
-                    
+
                 } catch (IOException e) {
-                    AppendText("dis.readUTF() error");
-                    try {
-                        dos.close();
-                        dis.close();
-                        client_socket.close();
-                        logout();
-                        break;  
-                    } catch (Exception ee) {
-                        break;
-                    } 
+                    removeClient();
+                    break;
                 }
             }
         }
-        
     }
 }
-
