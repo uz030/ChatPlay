@@ -129,6 +129,29 @@ public class ChatClientMain extends JFrame {
 
                     SwingUtilities.invokeLater(() -> roomListModel.addElement(newRoom));
                 }
+                else if (msg.startsWith("/room_exited ")) {
+                    int roomId = Integer.parseInt(msg.split(" ")[1]);
+
+                    SwingUtilities.invokeLater(() -> {
+                        // 1. roomMap에서 제거
+                        roomMap.remove(roomId);
+
+                        // 2. UI 리스트에서 제거
+                        for (int i = 0; i < roomListModel.size(); i++) {
+                            if (roomListModel.get(i).getRoomId() == roomId) {
+                                roomListModel.remove(i);
+                                break;
+                            }
+                        }
+
+                        // 3. 만약 방 창이 열려 있으면 닫기
+                        ChatRoomFrame frame = openedRoomFrames.get(roomId);
+                        if (frame != null) {
+                            frame.dispose();
+                        }
+                    });
+                }
+
 
                 // --- 채팅 메시지 수신 ---
                 else if (msg.startsWith("/roommsg ")) {
@@ -209,10 +232,30 @@ public class ChatClientMain extends JFrame {
                         if (owner == null) owner = this;
 
                         // 2. UserListDialog 생성 및 표시
-                        new UserListDialog(owner, "참여자 목록", profiles, 
-                            () -> { /* 초대 버튼 콜백 (필요시 구현) */ }, 
-                            () -> { /* 나가기 버튼 콜백 (필요시 구현) */ }  
-                        ).setVisible(true);
+                        new UserListDialog(
+                        	    owner,
+                        	    "참여자 목록",
+                        	    profiles,
+
+                        	    // ★ 초대 버튼 동작 연결
+                        	    () -> {
+                        	        ChatRoomData room = roomMap.get(rId);
+                        	        if (room != null) {
+                        	            ChatRoomPanel panel = openedRoomFrames.get(rId).getChatRoomPanel();
+                        	            panel.openInviteDialog(); // 기존 초대 UI 호출
+                        	        }
+                        	    },
+
+                        	    // ★ 나가기 버튼 동작 연결
+                        	    () -> {
+                        	        try {
+                        	            dos.writeUTF("/exitroom " + rId);
+                        	        } catch (Exception ex) {
+                        	            ex.printStackTrace();
+                        	        }
+                        	    }
+                        	).setVisible(true);
+
                     });
                 }
             }

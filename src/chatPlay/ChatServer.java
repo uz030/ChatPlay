@@ -277,7 +277,6 @@ public class ChatServer extends JFrame {
                                     // 방에서 해당 유저 제거
                                     room.participants.remove(this);
 
-                                    // 나간 사실 다른 유저들에게 알림
                                     room.broadcast("/roommsg " + rId + " System " + userName + "님이 방을 나갔습니다.");
 
                                     // 만약 방이 텅 비면 방 삭제(optional)
@@ -286,7 +285,6 @@ public class ChatServer extends JFrame {
                                     }
                                 }
 
-                                // 유저의 클라이언트에게 해당 방은 삭제되었다고 알려야 함
                                 WriteOne("/room_exited " + rId);
                             }
                             break;
@@ -328,6 +326,36 @@ public class ChatServer extends JFrame {
                                 }
                             }
                             break;
+                            
+                        case "/bot":
+                            if (args.length >= 3) {
+                                String command = args[1];
+                                int rId = Integer.parseInt(args[2]);
+
+                                if (command.equals("weather")) {
+                                    server.sendMsgToRoom(
+                                        rId,
+                                        "ChatBot",
+                                        "BOT_MENU:오늘의 날씨,7일 예보"
+                                    );
+                                }
+                                else if (command.equals("today")) {
+                                    server.sendMsgToRoom(
+                                        rId,
+                                        "ChatBot",
+                                        "오늘의 날씨"
+                                    );
+                                }
+                                else if (command.equals("week")) {
+                                    server.sendMsgToRoom(
+                                        rId,
+                                        "ChatBot",
+                                        "7일 예보"
+                                    );
+                                }
+                            }
+                            break;
+
                     }
 
                 } catch (IOException e) {

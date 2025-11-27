@@ -15,56 +15,67 @@ public class UserSelectDialog extends JDialog {
     // 방 이름 입력 필드
     private JTextField roomNameField;
 
+    private boolean showHeader = true; // 추가된 플래그
+
+    // 기존 생성자 유지 (방 만들기 용)
     public UserSelectDialog(ChatClientMain parent) {
-        this(parent, parent);   
+        this(parent, parent, true);
     }
     
+    // 기존 생성자 유지
     public UserSelectDialog(Window owner, ChatClientMain parent) {
-        super(owner, "채팅방 생성", ModalityType.APPLICATION_MODAL);
-        setSize(300, 500); 
+        this(owner, parent, true);
+    }
+
+    // ✅ 새로운 생성자: showHeader 로 모드 구분
+    public UserSelectDialog(Window owner, ChatClientMain parent, boolean showHeader) {
+        super(owner, showHeader ? "채팅방 생성" : "참여자 초대", ModalityType.APPLICATION_MODAL);
+        this.showHeader = showHeader;
+
+        setSize(300, showHeader ? 500 : 430);
         setLocationRelativeTo(owner);  
         setLayout(new BorderLayout());
         
-        // 1. 상단 헤더 패널 (타이틀 + 방 이름 입력)
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setOpaque(false);
+        // --- 1. 상단 헤더 (옵션) ---
+        if (showHeader) {
+            JPanel headerPanel = new JPanel(new BorderLayout());
+            headerPanel.setOpaque(false);
 
-        // 타이틀
-        GradientTitlePanel titlePanel = new GradientTitlePanel();
-        titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        JLabel title = new JLabel("새로운 채팅방", SwingConstants.CENTER);
-        title.setFont(new Font("맑은 고딕", Font.BOLD, 16));
-        titlePanel.add(title, BorderLayout.CENTER);
-        
-        // 방 이름 입력 영역
-        JPanel inputPanel = new JPanel(new BorderLayout());
-        inputPanel.setBackground(Color.WHITE);
-        inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        
-        JLabel lblInput = new JLabel("방 이름 (선택사항)");
-        lblInput.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
-        lblInput.setForeground(Color.GRAY);
-        
-        roomNameField = new JTextField();
-        roomNameField.setFont(new Font("맑은 고딕", Font.BOLD, 14));
-        roomNameField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)
-        ));
-        
-        inputPanel.add(lblInput, BorderLayout.NORTH);
-        inputPanel.add(roomNameField, BorderLayout.CENTER);
+            GradientTitlePanel titlePanel = new GradientTitlePanel();
+            titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+            JLabel title = new JLabel("새로운 채팅방", SwingConstants.CENTER);
+            title.setFont(new Font("맑은 고딕", Font.BOLD, 16));
+            titlePanel.add(title, BorderLayout.CENTER);
 
-        headerPanel.add(titlePanel, BorderLayout.NORTH);
-        headerPanel.add(inputPanel, BorderLayout.CENTER); 
+            JPanel inputPanel = new JPanel(new BorderLayout());
+            inputPanel.setBackground(Color.WHITE);
+            inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
-        add(headerPanel, BorderLayout.NORTH);
+            JLabel lblInput = new JLabel("방 이름 (선택사항)");
+            lblInput.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+            lblInput.setForeground(Color.GRAY);
 
+            roomNameField = new JTextField();
+            roomNameField.setFont(new Font("맑은 고딕", Font.BOLD, 14));
+            roomNameField.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(200, 200, 200)),
+                    BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            ));
 
-        // 2. 리스트 패널 (친구 목록)
+            inputPanel.add(lblInput, BorderLayout.NORTH);
+            inputPanel.add(roomNameField, BorderLayout.CENTER);
+
+            headerPanel.add(titlePanel, BorderLayout.NORTH);
+            headerPanel.add(inputPanel, BorderLayout.CENTER);
+
+            add(headerPanel, BorderLayout.NORTH);
+        }
+
+        // --- 2. 리스트 패널 ---
         JPanel listPanel = new JPanel();
         listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
-        listPanel.setOpaque(false); 
+        listPanel.setOpaque(true); 
+        listPanel.setBackground(Color.WHITE);
 
         DefaultListModel<UserProfile> model = parent.getUserListModel();
         for (int i = 0; i < model.getSize(); i++) {
@@ -72,19 +83,20 @@ public class UserSelectDialog extends JDialog {
             UserSelectButton btn = new UserSelectButton(profile);
             userButtons.add(btn);
             listPanel.add(btn);
-            listPanel.add(Box.createVerticalStrut(5));
         }
 
         JScrollPane scroll = new JScrollPane(listPanel);
         scroll.getViewport().setOpaque(false);
-        scroll.setOpaque(false);
+        scroll.getViewport().setBackground(Color.WHITE);
+        scroll.setOpaque(true); 
         scroll.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         ScrollUtil.applyCustomScrollBar(scroll);
         add(scroll, BorderLayout.CENTER);
 
+        // --- 3. 하단 버튼 ---
+        String btnLabel = showHeader ? "만들기" : "초대하기";  // 버튼 이름 자동 변경
 
-        // 3. 하단 버튼
-        JButton btnOk = new JButton("만들기");
+        JButton btnOk = new JButton(btnLabel);
         btnOk.setFont(new Font("맑은 고딕", Font.BOLD, 14));
         btnOk.setPreferredSize(new Dimension(300, 50));
         btnOk.setFocusPainted(false);
@@ -128,9 +140,8 @@ public class UserSelectDialog extends JDialog {
     public boolean isOk() { return isOk; }
     public List<String> getSelectedUsers() { return selectedUsers; }
     
-    // 입력된 방 이름 반환
     public String getRoomNameInput() {
-        return roomNameField.getText().trim();
+        return roomNameField != null ? roomNameField.getText().trim() : "";
     }
     
     class GradientTitlePanel extends JPanel {

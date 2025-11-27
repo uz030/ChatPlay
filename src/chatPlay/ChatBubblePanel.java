@@ -43,7 +43,8 @@ public class ChatBubblePanel extends JPanel {
         // 2. 챗봇 메시지
         if (msg.isBotMessage()) {
             add(createBotPanel(msg, onBotMenuClick), BorderLayout.WEST);
-        } 
+        }
+
         // 3. 일반 메시지
         else {
             if (msg.isMine()) {
@@ -143,7 +144,7 @@ public class ChatBubblePanel extends JPanel {
         JPanel botPanel = new JPanel(new BorderLayout());
         botPanel.setOpaque(false);
         
-        JLabel name = new JLabel("ChatBot");
+        JLabel name = new JLabel("ChatBot 🤖");
         name.setFont(new Font("맑은 고딕", Font.BOLD, 12));
         name.setForeground(new Color(0, 120, 200));
         botPanel.add(name, BorderLayout.NORTH);
@@ -157,8 +158,14 @@ public class ChatBubblePanel extends JPanel {
             btn.setBackground(Color.WHITE);
             btn.setFocusPainted(false);
             btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            btn.setActionCommand(m);
-            btn.addActionListener(onBotMenuClick); // 리스너 연결
+            btn.addActionListener(e -> {
+                if (onBotMenuClick != null) {
+                    onBotMenuClick.actionPerformed(
+                        new java.awt.event.ActionEvent(btn, 0, m)
+                    );
+                }
+            });
+
             btnContainer.add(btn);
         }
 

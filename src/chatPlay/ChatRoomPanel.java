@@ -2,6 +2,7 @@ package chatPlay;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 
 public class ChatRoomPanel extends JPanel {
 
@@ -68,28 +69,68 @@ public class ChatRoomPanel extends JPanel {
         scrollPane.setBorder(null);
         add(scrollPane, BorderLayout.CENTER);
 
-        // 3. 하단 입력창
-        JPanel bottom = new JPanel(new BorderLayout());
+     // 3. 하단 입력창
+        JPanel bottom = new JPanel();
         bottom.setBackground(Color.WHITE);
-        bottom.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
+        bottom.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        bottom.setLayout(new BoxLayout(bottom, BoxLayout.X_AXIS));
+
+        /* ─────────────── 파일 버튼 ─────────────── */
+        JButton btnFile = new JButton(new ImageIcon("src/images/file.png"));
+        btnFile.setBorderPainted(false);
+        btnFile.setContentAreaFilled(false);
+        btnFile.setFocusPainted(false);
+
+        JPanel filePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        filePanel.setOpaque(false);
+        filePanel.add(btnFile);
+
+        bottom.add(filePanel);
+        bottom.add(Box.createHorizontalStrut(8));  
+
+        /* ─────────────── 입력 박스 ─────────────── */
+        JPanel inputBox = new JPanel(new BorderLayout());
+        inputBox.setBackground(Color.WHITE);
+        inputBox.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
+        inputBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        inputBox.setPreferredSize(new Dimension(200, 40));
 
         inputField = new JTextField();
+        inputField.setBorder(null);
+        inputField.setFont(new Font("맑은 고딕", Font.PLAIN, 14));
+
+        JButton btnEmoji = new JButton(new ImageIcon("src/images/emoticon.png"));
+        btnEmoji.setBorderPainted(false);
+        btnEmoji.setContentAreaFilled(false);
+        btnEmoji.setFocusPainted(false);
+        btnEmoji.setPreferredSize(new Dimension(40, 30));
+
+        inputBox.add(inputField, BorderLayout.CENTER);
+        inputBox.add(btnEmoji, BorderLayout.EAST);
+
+
+        /* ─────────────── 전송 버튼 ─────────────── */
         JButton btnSend = new RoundedButton("전송", new Color(0, 149, 246), new Color(0, 120, 200), Color.WHITE);
         btnSend.setPreferredSize(new Dimension(70, 40));
+        btnSend.setFocusPainted(false);
         
         inputField.addActionListener(e -> sendMsg());
         btnSend.addActionListener(e -> sendMsg());
+        
+        bottom.add(inputBox);
+        bottom.add(Box.createHorizontalStrut(8)); 
+        bottom.add(btnSend);
 
-        bottom.add(inputField, BorderLayout.CENTER);
-        bottom.add(Box.createHorizontalStrut(10), BorderLayout.EAST);
-        bottom.add(btnSend, BorderLayout.EAST);
         add(bottom, BorderLayout.SOUTH);
+
+
         
         scrollToBottom();
     }
 
     public void addBubble(ChatMessage msg) {
-        ChatBubblePanel bubble = new ChatBubblePanel(msg, null);
+    	ChatBubblePanel bubble = new ChatBubblePanel(msg, e -> onBotMenuClicked(e));
+
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
@@ -139,7 +180,7 @@ public class ChatRoomPanel extends JPanel {
     private void inviteFriend() {
         Window owner = SwingUtilities.getWindowAncestor(this);
 
-        UserSelectDialog dialog = new UserSelectDialog(owner, parent);
+        UserSelectDialog dialog = new UserSelectDialog(owner, parent, false);
         dialog.setVisible(true);
 
         if (dialog.isOk()) {
@@ -158,9 +199,45 @@ public class ChatRoomPanel extends JPanel {
     public void openInviteDialog() {
         inviteFriend();
     }
+
+    private void onBotMenuClicked(ActionEvent e) {
+        String menu = e.getActionCommand();
+        int roomId = roomData.getRoomId();
+
+        try {
+            if (menu.equals("날씨")) {
+            	parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " " + "날씨");
+                parent.getDos().writeUTF("/bot weather " + roomId);
+            }
+            else if (menu.equals("오늘의 날씨")) {
+                ChatRoomFrame frame = (ChatRoomFrame) SwingUtilities.getWindowAncestor(this);
+                frame.switchToPanel(
+                    new weather.TodayWeatherPage(() ->
+                        frame.switchToPanel(frame.getChatRoomPanel())
+                    )
+                );
+            }
+            else if (menu.equals("7일 예보")) {
+                ChatRoomFrame frame = (ChatRoomFrame) SwingUtilities.getWindowAncestor(this);
+                frame.switchToPanel(
+                    new weather.WeekWeatherPage(() ->
+                        frame.switchToPanel(frame.getChatRoomPanel())
+                    )
+                );
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+
+
+
     
     // 외부에서 룸 ID 확인용
     public int getRoomId() { return roomData.getRoomId(); }
-    
+
+
     
 }

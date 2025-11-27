@@ -76,7 +76,7 @@ public class ChatPanel extends JPanel {
     }
 
     private void createRoom() {
-        UserSelectDialog dialog = new UserSelectDialog(parent);
+    	UserSelectDialog dialog = new UserSelectDialog(parent, parent, true);
         dialog.setVisible(true);
 
         if (dialog.isOk()) {

@@ -18,10 +18,17 @@ public class ChatRoomFrame extends JFrame {
     }
 
     public void appendMessage(ChatMessage msg) {
-        ChatRoomPanel panel = (ChatRoomPanel) getContentPane();
+     
         panel.addBubble(msg);
     }
     public ChatRoomPanel getChatRoomPanel() {
         return panel;
     }
+    
+    public void switchToPanel(JPanel panel) {
+        setContentPane(panel);
+        revalidate();
+        repaint();
+    }
+
 }
