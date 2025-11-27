@@ -12,7 +12,10 @@ public class ChatRoomPanel extends JPanel {
     private JPanel chatContentPanel;
     private JScrollPane scrollPane;
     private JTextField inputField;
-
+    
+    private Emoji emojiDialog;
+    private boolean emojiOpen = false;
+    
     public ChatRoomPanel(ChatClientMain parent, ChatRoomData roomData) {
         this.parent = parent;
         this.roomData = roomData;
@@ -69,7 +72,7 @@ public class ChatRoomPanel extends JPanel {
         scrollPane.setBorder(null);
         add(scrollPane, BorderLayout.CENTER);
 
-     // 3. 하단 입력창
+        // 3. 하단 입력창
         JPanel bottom = new JPanel();
         bottom.setBackground(Color.WHITE);
         bottom.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -104,6 +107,53 @@ public class ChatRoomPanel extends JPanel {
         btnEmoji.setContentAreaFilled(false);
         btnEmoji.setFocusPainted(false);
         btnEmoji.setPreferredSize(new Dimension(40, 30));
+        btnEmoji.addActionListener(e -> {
+        	
+        	if (emojiDialog == null) {
+                emojiDialog = new Emoji(
+                        SwingUtilities.getWindowAncestor(this),
+                        parent,
+                        roomData
+                );
+            }
+        	
+        	emojiOpen = !emojiOpen;
+
+            if (emojiOpen) {
+                // 위치 다시 계산
+                Point p = inputBox.getLocationOnScreen();
+
+                Window win = SwingUtilities.getWindowAncestor(this);
+
+                int dlgW = emojiDialog.getWidth();
+                int dlgH = emojiDialog.getHeight();
+
+                int winX = win.getX();
+                int winY = win.getY();
+                int winW = win.getWidth();
+                int winH = win.getHeight();
+
+                int targetX = p.x;
+                int targetY = p.y - dlgH;
+
+                // ─────────── 위치 보정 ───────────
+                if (targetX + dlgW > winX + winW)
+                    targetX = winX + winW - dlgW - 20;
+                if (targetX < winX)
+                    targetX = winX + 5;
+                if (targetY < winY)
+                    targetY = p.y + inputBox.getHeight();  // 위 공간 없으면 아래 출력
+
+                emojiDialog.setLocation(targetX, targetY);
+                emojiDialog.setVisible(true);
+
+            } else {
+                // 닫기
+                emojiDialog.setVisible(false);
+            }
+        });
+
+
 
         inputBox.add(inputField, BorderLayout.CENTER);
         inputBox.add(btnEmoji, BorderLayout.EAST);

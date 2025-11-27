@@ -41,26 +41,20 @@ public class ChatMessage {
         m.type = MessageType.TEXT;
         return m;
     }
-
-    // 이미지 메시지용
-    public static ChatMessage image(String sender, String fileName, byte[] data, boolean isMine) {
-        ChatMessage m = new ChatMessage(sender, "[이미지]", isMine, null);
-        m.type = MessageType.IMAGE;
-        m.fileName = fileName;
-        m.fileData = data;
-        return m;
-    }
-
-    // 일반 파일 메시지용
-    public static ChatMessage file(String sender, String fileName, byte[] data, boolean isMine) {
-        ChatMessage m = new ChatMessage(sender, "[파일] " + fileName, isMine, null);
-        m.type = MessageType.FILE;
-        m.fileName = fileName;
-        m.fileData = data;
-        return m;
-    }
     
     public void setSenderIcon(ImageIcon icon) { this.senderIcon = icon; }
+
+    public void setType(MessageType type) {
+        this.type = type;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public void setFileData(byte[] data) {
+        this.fileData = data;
+    }
 
     public MessageType getType() {
         return type;
@@ -73,4 +67,9 @@ public class ChatMessage {
     public byte[] getFileData() {
         return fileData;
     }
+    
+    private ImageIcon imageIcon;
+    public void setImageIcon(ImageIcon icon) { this.imageIcon = icon; }
+    public ImageIcon getImageIcon() { return imageIcon; }
+
 }

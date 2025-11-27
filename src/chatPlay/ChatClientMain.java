@@ -162,34 +162,60 @@ public class ChatClientMain extends JFrame {
                     String text = parts[3];
 
                     ChatRoomData room = roomMap.get(rId);
-                    if (room != null) {
+                    if (room == null) continue;
 
-                        boolean isMine = sender.equals(myProfile.getUsername());
-                        
-                        // 1. 보낸 사람의 아이콘 찾기
-                        ImageIcon senderIcon;
-                        if (isMine) {
-                            senderIcon = myProfile.getIcon();
-                        } else {
-                            senderIcon = findUserIcon(sender);
-                        }
+                    boolean isMine = sender.equals(myProfile.getUsername());
 
-                        // 2. 아이콘 정보를 포함하여 메시지 객체 생성
-                        ChatMessage chatMsg = new ChatMessage(sender, text, isMine, senderIcon);
+                    // 보낸 사람의 아이콘 찾기
+                    ImageIcon senderIcon;
+                    if (isMine) {
+                        senderIcon = myProfile.getIcon();
+                    } else {
+                        senderIcon = findUserIcon(sender);
+                    }
 
-                        // 3. 기록 저장
+                    // ---------------------------------------------------
+                    // 1) 이미지 메시지 (@images 파일이름)
+                    // ---------------------------------------------------
+                    if (text.startsWith("@images")) {
+
+                        String fileName = text.substring(8).trim(); // "@images " 뒤 문자열
+
+                        ImageIcon img = loadEmojiImage(fileName);
+
+                        ChatMessage chatMsg = new ChatMessage(sender, "", isMine, senderIcon);
+                        chatMsg.setType(ChatMessage.MessageType.IMAGE);
+                        chatMsg.setImageIcon(img);
+                        chatMsg.setFileName(fileName);
+
                         room.getMessageLog().addElement(chatMsg);
 
                         SwingUtilities.invokeLater(() -> {
-                            // 열린 채팅창이 있으면 창에 표시, 없으면 홈 리스트에만 표시(추후 구현)
                             if (openedRoomFrames.containsKey(rId)) {
                                 openedRoomFrames.get(rId).appendMessage(chatMsg);
                             } else {
                                 homePanel.appendMessageToRoom(rId, chatMsg);
                             }
                         });
+
+                        continue; // 이미지 처리했으니 아래 텍스트 처리 스킵
                     }
+
+                    // ---------------------------------------------------
+                    // 2) 일반 텍스트 메시지
+                    // ---------------------------------------------------
+                    ChatMessage chatMsg = new ChatMessage(sender, text, isMine, senderIcon);
+                    room.getMessageLog().addElement(chatMsg);
+
+                    SwingUtilities.invokeLater(() -> {
+                        if (openedRoomFrames.containsKey(rId)) {
+                            openedRoomFrames.get(rId).appendMessage(chatMsg);
+                        } else {
+                            homePanel.appendMessageToRoom(rId, chatMsg);
+                        }
+                    });
                 }
+
                 
                 // --- 참여자 목록 확인 결과 (UserListDialog 호출) ---
                 else if (msg.startsWith("/roomusers_result ")) {
@@ -301,6 +327,16 @@ public class ChatClientMain extends JFrame {
         frame.setVisible(true);
     }
 
+    private ImageIcon loadEmojiImage(String fileName) {
+        try {
+            return new ImageIcon("src/images/icon/" + fileName);
+        } catch (Exception e) {
+            System.out.println("이미지 로딩 실패: " + fileName);
+            return defaultProfileIcon;
+        }
+    }
+
+    
     public ChatHome getHomePanel() { return homePanel; }
     public DataOutputStream getDos() { return dos; }
     public UserProfile getMyProfile() { return myProfile; }

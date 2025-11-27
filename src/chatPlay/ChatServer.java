@@ -315,8 +315,10 @@ public class ChatServer extends JFrame {
                                 String content =
                                         msg.substring(msg.indexOf(args[2])).trim();
 
+                                // 1) 일반 메시지 + 이미지 메시지 전부 여기서 한 번만 전송
                                 server.sendMsgToRoom(rId, userName, content);
 
+                                // 2) 봇만 예외 처리
                                 if (content.equals("@채팅봇")) {
                                     server.sendMsgToRoom(
                                             rId,
@@ -326,6 +328,7 @@ public class ChatServer extends JFrame {
                                 }
                             }
                             break;
+
                             
                         case "/bot":
                             if (args.length >= 3) {

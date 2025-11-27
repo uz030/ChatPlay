@@ -106,6 +106,12 @@ public class ChatBubblePanel extends JPanel {
 
     // 말풍선 생성
     private JPanel createBubble(ChatMessage msg, boolean isMine) {
+    	
+    	if (msg.getType() == ChatMessage.MessageType.IMAGE) {
+            return createImagePanel(msg, isMine);
+        }
+
+    	
         JTextArea area = new JTextArea(msg.getContent());
         Font font = new Font("맑은 고딕", Font.PLAIN, 14);
         area.setFont(font);
@@ -138,7 +144,50 @@ public class ChatBubblePanel extends JPanel {
         bubble.add(area);
         return bubble;
     }
+    
+    
+    private JPanel createImagePanel(ChatMessage msg, boolean isMine) {
 
+        // 파일명 가져오기
+        String fileName = msg.getFileName();
+        ImageIcon icon = msg.getImageIcon();
+
+        // 만약 미리 로딩된 아이콘이 없다면 직접 로딩
+        if (icon == null) {
+            icon = new ImageIcon("src/images/icon/" + fileName);
+        }
+
+        int maxW = 90;
+        int maxH = 90;
+
+        Image img = icon.getImage().getScaledInstance(maxW, maxH, Image.SCALE_SMOOTH);
+        ImageIcon scaled = new ImageIcon(img);
+
+        JLabel imgLabel = new JLabel(scaled);
+        imgLabel.setPreferredSize(new Dimension(maxW, maxH));   // ⭐ 중요!!!!
+
+        JPanel bubble = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(isMine ? new Color(0, 149, 246) : new Color(239, 239, 239));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
+                super.paintComponent(g);
+            }
+        };
+
+        bubble.setOpaque(false);
+        bubble.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+        bubble.add(imgLabel, BorderLayout.CENTER);
+
+        // ⭐ 버블 크기를 이미지 크기에 맞게 줄이기
+        bubble.setMaximumSize(new Dimension(maxW + 20, maxH + 20));
+
+        return bubble;
+    }
+
+    
     // 봇 패널 생성
     private JPanel createBotPanel(ChatMessage msg, ActionListener onBotMenuClick) {
         JPanel botPanel = new JPanel(new BorderLayout());

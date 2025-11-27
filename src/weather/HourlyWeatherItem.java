@@ -13,7 +13,9 @@ public class HourlyWeatherItem extends JPanel {
         setOpaque(false);
         setPreferredSize(new Dimension(0, 70));
         setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-
+        setPreferredSize(new Dimension(0, 70));
+        setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+        
         // 왼쪽: 시간 (13시)
         String timeStr = new SimpleDateFormat("HH시").format(new Date(d.dt * 1000));
         JLabel timeLabel = new JLabel(timeStr);

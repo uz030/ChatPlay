@@ -105,6 +105,9 @@ public class TodayWeatherPage extends JPanel {
             }
         }
 
+        listPanel.add(Box.createVerticalGlue());
+
+        
         listPanel.revalidate();
         listPanel.repaint();
     }
