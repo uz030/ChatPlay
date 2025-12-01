@@ -13,7 +13,8 @@ public class ChatRoomPanel extends JPanel {
     private JScrollPane scrollPane;
     private JTextField inputField;
     
-    private Emoji emojiDialog;
+    private JLayeredPane layeredChatPanel;
+    private Emoji emoji;
     private boolean emojiOpen = false;
     
     public ChatRoomPanel(ChatClientMain parent, ChatRoomData roomData) {
@@ -36,7 +37,7 @@ public class ChatRoomPanel extends JPanel {
 
         JLabel title = new JLabel(roomData.getRoomName(), SwingConstants.CENTER);
         title.setFont(new Font("맑은 고딕", Font.BOLD, 16));
-      
+    
         JButton btnUsers = new JButton("👥");
         btnUsers.setContentAreaFilled(false);
         btnUsers.setBorderPainted(false);
@@ -57,7 +58,7 @@ public class ChatRoomPanel extends JPanel {
         
         add(top, BorderLayout.NORTH);
 
-        // 2. 중앙 채팅 영역
+        // 2. 중앙 채팅 영역 - JLayeredPane 사용
         chatContentPanel = new JPanel();
         chatContentPanel.setLayout(new BoxLayout(chatContentPanel, BoxLayout.Y_AXIS));
         chatContentPanel.setBackground(Color.WHITE);
@@ -70,7 +71,25 @@ public class ChatRoomPanel extends JPanel {
         scrollPane = new JScrollPane(chatContentPanel);
         ScrollUtil.applyCustomScrollBar(scrollPane);
         scrollPane.setBorder(null);
-        add(scrollPane, BorderLayout.CENTER);
+        
+        layeredChatPanel = new JLayeredPane();
+        add(layeredChatPanel, BorderLayout.CENTER);
+        
+        layeredChatPanel.add(scrollPane);
+        layeredChatPanel.setLayer(scrollPane, JLayeredPane.DEFAULT_LAYER); 
+        
+        layeredChatPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                
+                scrollPane.setBounds(0, 0, layeredChatPanel.getWidth(), layeredChatPanel.getHeight());
+               
+                if (emoji != null && emoji.isVisible()) {
+                    updateEmojiPanelLocation();
+                }
+            }
+        });
+
 
         // 3. 하단 입력창
         JPanel bottom = new JPanel();
@@ -89,7 +108,7 @@ public class ChatRoomPanel extends JPanel {
         filePanel.add(btnFile);
 
         bottom.add(filePanel);
-        bottom.add(Box.createHorizontalStrut(8));  
+        bottom.add(Box.createHorizontalStrut(8));    
 
         /* ─────────────── 입력 박스 ─────────────── */
         JPanel inputBox = new JPanel(new BorderLayout());
@@ -107,54 +126,38 @@ public class ChatRoomPanel extends JPanel {
         btnEmoji.setContentAreaFilled(false);
         btnEmoji.setFocusPainted(false);
         btnEmoji.setPreferredSize(new Dimension(40, 30));
+        
         btnEmoji.addActionListener(e -> {
         	
-        	if (emojiDialog == null) {
-                emojiDialog = new Emoji(
-                        SwingUtilities.getWindowAncestor(this),
+        	if (emoji == null) {
+        		emoji = new Emoji(
+                        this,
                         parent,
                         roomData
                 );
+                // JLayeredPane의 POPUP_LAYER에 추가
+                layeredChatPanel.add(emoji);
+                layeredChatPanel.setLayer(emoji, JLayeredPane.POPUP_LAYER); // 👈 수정됨
+                
+                emoji.setVisible(false);
+                emoji.setSize(emoji.getPreferredSize());
             }
         	
         	emojiOpen = !emojiOpen;
 
             if (emojiOpen) {
-                // 위치 다시 계산
-                Point p = inputBox.getLocationOnScreen();
-
-                Window win = SwingUtilities.getWindowAncestor(this);
-
-                int dlgW = emojiDialog.getWidth();
-                int dlgH = emojiDialog.getHeight();
-
-                int winX = win.getX();
-                int winY = win.getY();
-                int winW = win.getWidth();
-                int winH = win.getHeight();
-
-                int targetX = p.x;
-                int targetY = p.y - dlgH;
-
-                // ─────────── 위치 보정 ───────────
-                if (targetX + dlgW > winX + winW)
-                    targetX = winX + winW - dlgW - 20;
-                if (targetX < winX)
-                    targetX = winX + 5;
-                if (targetY < winY)
-                    targetY = p.y + inputBox.getHeight();  // 위 공간 없으면 아래 출력
-
-                emojiDialog.setLocation(targetX, targetY);
-                emojiDialog.setVisible(true);
+                updateEmojiPanelLocation();
+                emoji.setVisible(true);
 
             } else {
-                // 닫기
-                emojiDialog.setVisible(false);
+            	emoji.setVisible(false);
             }
+            
+            layeredChatPanel.revalidate();
+            layeredChatPanel.repaint();
         });
-
-
-
+        
+        
         inputBox.add(inputField, BorderLayout.CENTER);
         inputBox.add(btnEmoji, BorderLayout.EAST);
 
@@ -168,15 +171,30 @@ public class ChatRoomPanel extends JPanel {
         btnSend.addActionListener(e -> sendMsg());
         
         bottom.add(inputBox);
-        bottom.add(Box.createHorizontalStrut(8)); 
+        bottom.add(Box.createHorizontalStrut(8));    
         bottom.add(btnSend);
 
         add(bottom, BorderLayout.SOUTH);
 
-
         
         scrollToBottom();
     }
+    
+    
+    private void updateEmojiPanelLocation() {
+        if (emoji == null) return;
+        
+        Dimension dlgSize = emoji.getPreferredSize();
+        
+       
+        int targetX = layeredChatPanel.getWidth() - dlgSize.width - 10; 
+        
+      
+        int targetY = layeredChatPanel.getHeight() - dlgSize.height; 
+        
+        emoji.setBounds(targetX, targetY, dlgSize.width, dlgSize.height);
+    }
+    
 
     public void addBubble(ChatMessage msg) {
     	ChatBubblePanel bubble = new ChatBubblePanel(msg, e -> onBotMenuClicked(e));
@@ -214,11 +232,6 @@ public class ChatRoomPanel extends JPanel {
 
             // 2) 입력창 초기화
             inputField.setText("");
-
-            // ❌ 삭제해야 함 — 서버가 다시 보내기 때문에 두 번 뜸
-            // ChatMessage selfMsg = new ChatMessage(parent.getMyProfile().getUsername(), txt, true);
-            // addBubble(selfMsg);
-            // roomData.getMessageLog().addElement(selfMsg);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -280,14 +293,16 @@ public class ChatRoomPanel extends JPanel {
             ex.printStackTrace();
         }
     }
-
-
-
-
     
-    // 외부에서 룸 ID 확인용
-    public int getRoomId() { return roomData.getRoomId(); }
+    public void closeEmoji() {
+        if (emoji != null && emoji.isVisible()) {
+        	emoji.setVisible(false);
+            emojiOpen = false;
+        }
+    }
 
+
+    public int getRoomId() { return roomData.getRoomId(); }
 
     
 }

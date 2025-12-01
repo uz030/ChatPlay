@@ -4,26 +4,30 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 
-public class Emoji extends JDialog {
+public class Emoji extends JPanel {
 
     private ChatClientMain client;
     private ChatRoomData roomData;
+    private ChatRoomPanel ownerPanel; 
 
-    public Emoji(Window owner, ChatClientMain client, ChatRoomData roomData) {
-    	super(owner, Dialog.ModalityType.MODELESS);
+  
+    public Emoji(Component owner, ChatClientMain client, ChatRoomData roomData) {
+        
+        if (owner instanceof ChatRoomPanel) {
+            this.ownerPanel = (ChatRoomPanel) owner;
+        }
         this.client = client;
         this.roomData = roomData;
-
-        setUndecorated(true);
-        setSize(350, 120);
-        setLayout(new BorderLayout());
-
+        
+        setLayout(new BorderLayout()); 
+        
+        setPreferredSize(new Dimension(350, 150)); 
+        
         JPanel emojiPanel = new JPanel();
         emojiPanel.setLayout(new BoxLayout(emojiPanel, BoxLayout.X_AXIS));
-        emojiPanel.setBackground(new Color(255, 255, 255, 240));
+        emojiPanel.setBackground(Color.WHITE); 
 
         JScrollPane scrollPane = new JScrollPane(emojiPanel);
-        ScrollUtil.applyCustomScrollBar(scrollPane);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
         scrollPane.setBorder(null);
@@ -31,12 +35,10 @@ public class Emoji extends JDialog {
         add(scrollPane, BorderLayout.CENTER);
 
         loadIcons(emojiPanel);
-
-        // 기본 위치 (혹시 따로 안 잡아줄 때 대비)
-        setLocationRelativeTo(owner);
     }
-
+    
     private void loadIcons(JPanel emojiPanel) {
+
         File folder = new File("src/images/icon");
         if (!folder.exists()) {
             System.out.println("⚠️ 폴더 없음: src/images/icon");
@@ -59,7 +61,6 @@ public class Emoji extends JDialog {
 
             btn.addActionListener(e -> {
                 sendEmoji(f.getName());
-                setVisible(false);
             });
 
             emojiPanel.add(btn);
@@ -73,6 +74,12 @@ public class Emoji extends JDialog {
                 "/roommsg " + roomData.getRoomId() +
                 " @images " + fileName
             );
+            
+           
+            if (ownerPanel != null) {
+                ownerPanel.closeEmoji(); 
+            }
+            
         } catch (Exception ex) {
             ex.printStackTrace();
         }
