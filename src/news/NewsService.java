@@ -15,7 +15,8 @@ public class NewsService {
     private static final String CLIENT_ID = "CRblJv6kSEuc5aljHzSt"; 
     private static final String CLIENT_SECRET = "_rw8IOfk7Z";
 
-    public static List<NewsItem> searchNews(String keyword) {
+    @SuppressWarnings("deprecation")
+	public static List<NewsItem> searchNews(String keyword) {
         List<NewsItem> list = new ArrayList<>();
         try {
             String text = URLEncoder.encode(keyword, "UTF-8");
