@@ -356,6 +356,13 @@ public class ChatServer extends JFrame {
                                         "7일 예보"
                                     );
                                 }
+                                else if (command.equals("news")) {
+                                    server.sendMsgToRoom(
+                                        rId,
+                                        "ChatBot",
+                                        "BOT_MENU:속보,정치,경제,사회,세계,IT/과학"
+                                    );
+                                }
                             }
                             break;
 
