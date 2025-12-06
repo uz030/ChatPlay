@@ -13,9 +13,8 @@ public class GameManager {
     // 게임별 활성 참여자 (게임 진행 중)
     private Map<Integer, Set<String>> activeParticipants = new HashMap<>();
 
-    /**
-     * 게임 참여자 추가
-     */
+    // 게임 참여자 추가
+     
     public synchronized boolean addParticipant(int roomId, String userName, GameType gameType) {
         if (!waitingParticipants.containsKey(roomId)) {
             waitingParticipants.put(roomId, new HashSet<>());
@@ -23,25 +22,22 @@ public class GameManager {
         return waitingParticipants.get(roomId).add(userName);
     }
     
-    /**
-     * 참여자 수 조회
-     */
+    // 참여자 수 조회
+    
     public synchronized int getParticipantCount(int roomId) {
         Set<String> participants = waitingParticipants.get(roomId);
         return participants != null ? participants.size() : 0;
     }
     
-    /**
-     * 게임 시작 가능 여부 확인
-     */
+    // 게임 시작 가능 여부 확인
+   
     public synchronized boolean canStartGame(int roomId, GameType gameType) {
         int minPlayers = getMinPlayers(gameType);
         return getParticipantCount(roomId) >= minPlayers;
     }
     
-    /**
-     * 게임별 최소 인원
-     */
+    // 게임별 최소 인원
+   
     private int getMinPlayers(GameType gameType) {
         switch (gameType) {
             case CATCH_MIND: return 2;
@@ -51,9 +47,8 @@ public class GameManager {
         }
     }
 
-    /**
-     * 게임 시작
-     */
+    // 게임 시작
+   
     public synchronized GameInstance startGame(
         int roomId, 
         GameType type,
@@ -105,9 +100,8 @@ public class GameManager {
         return game;
     }
 
-    /**
-     * 게임 메시지 처리
-     */
+    // 게임 메시지 처리
+     
     public synchronized void handleGameMessage(int roomId, String userName, String msg) {
         GameInstance game = games.get(roomId);
         if (game != null) {
@@ -115,9 +109,7 @@ public class GameManager {
         }
     }
 
-    /**
-     * 게임 종료
-     */
+    // 게임 종료
     public synchronized void endGame(int roomId) {
         GameInstance game = games.remove(roomId);
         if (game != null) {
@@ -129,30 +121,26 @@ public class GameManager {
         waitingParticipants.remove(roomId);
     }
 
-    /**
-     * 게임 인스턴스 조회
-     */
+    // 게임 인스턴스 조회
+     
     public synchronized GameInstance getGame(int roomId) {
         return games.get(roomId);
     }
 
-    /**
-     * 게임 실행 여부
-     */
+    //  게임 실행 여부
+     
     public synchronized boolean isGameRunning(int roomId) {
         return games.containsKey(roomId);
     }
     
-    /**
-     * 활성 게임 참여자 조회 (그림 데이터 전송용)
-     */
+    //  활성 게임 참여자 조회 (그림 데이터 전송용)
+   
     public synchronized Set<String> getActiveParticipants(int roomId) {
         return activeParticipants.get(roomId);
     }
     
-    /**
-     * 대기 중인 참여자 조회
-     */
+    // 대기 중인 참여자 조회
+     
     public synchronized Set<String> getWaitingParticipants(int roomId) {
         return waitingParticipants.get(roomId);
     }

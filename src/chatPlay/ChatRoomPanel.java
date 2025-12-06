@@ -3,6 +3,8 @@ package chatPlay;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import news.*;
+
 
 public class ChatRoomPanel extends JPanel {
 
