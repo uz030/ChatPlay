@@ -7,7 +7,11 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
+import game.GameManager;
+import game.GameType;
+import game.MessageBroadcaster;
 
 public class ChatServer extends JFrame {
 
@@ -20,6 +24,9 @@ public class ChatServer extends JFrame {
     private Vector<UserService> UserVec = new Vector<>();
     private Map<Integer, Room> roomMap = new HashMap<>();
     private int roomNumCounter = 0;
+    
+    private GameManager gameManager = new GameManager();
+    // ✅ 게임 관련 데이터는 모두 제거 - GameManager가 관리
 
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> {
@@ -152,6 +159,15 @@ public class ChatServer extends JFrame {
                 u.WriteOne(msg);
             }
         }
+        
+        // ✅ 게임 참가자에게만 전송
+        public void broadcastToGameParticipants(String msg, Set<String> gameParticipants) {
+            for (UserService u : participants) {
+                if (gameParticipants.contains(u.getUserName())) {
+                    u.WriteOne(msg);
+                }
+            }
+        }
     }
 
     class UserService extends Thread {
@@ -274,12 +290,9 @@ public class ChatServer extends JFrame {
                                 Room room = server.roomMap.get(rId);
 
                                 if (room != null) {
-                                    // 방에서 해당 유저 제거
                                     room.participants.remove(this);
-
                                     room.broadcast("/roommsg " + rId + " System " + userName + "님이 방을 나갔습니다.");
 
-                                    // 만약 방이 텅 비면 방 삭제(optional)
                                     if (room.participants.isEmpty()) {
                                         server.roomMap.remove(rId);
                                     }
@@ -289,20 +302,16 @@ public class ChatServer extends JFrame {
                             }
                             break;
 
-
                         case "/roomusers": {
                             if (args.length < 2) break;
 
                             int rId = Integer.parseInt(args[1]);
                             Room room = server.roomMap.get(rId);
                             if (room != null) {
-
-                                // 참가자 이름만 뽑기
                                 String list = room.participants.stream()
                                         .map(u -> u.userName)
                                         .collect(Collectors.joining(","));
 
-                                // 요청한 유저에게만 전송
                                 WriteOne("/roomusers_result " + rId + " " + list);
                             }
                             break;
@@ -311,24 +320,15 @@ public class ChatServer extends JFrame {
                         case "/roommsg":
                             if (args.length >= 3) {
                                 int rId = Integer.parseInt(args[1]);
+                                String content = msg.substring(msg.indexOf(args[2])).trim();
 
-                                String content =
-                                        msg.substring(msg.indexOf(args[2])).trim();
-
-                                // 1) 일반 메시지 + 이미지 메시지 전부 여기서 한 번만 전송
                                 server.sendMsgToRoom(rId, userName, content);
 
-                                // 2) 봇만 예외 처리
                                 if (content.equals("@채팅봇")) {
-                                    server.sendMsgToRoom(
-                                            rId,
-                                            "ChatBot",
-                                            "BOT_MENU:뉴스,날씨,게임"
-                                    );
+                                    server.sendMsgToRoom(rId, "ChatBot", "BOT_MENU:뉴스,날씨,게임");
                                 }
                             }
                             break;
-
                             
                         case "/bot":
                             if (args.length >= 3) {
@@ -336,29 +336,177 @@ public class ChatServer extends JFrame {
                                 int rId = Integer.parseInt(args[2]);
 
                                 if (command.equals("weather")) {
-                                    server.sendMsgToRoom(
-                                        rId,
-                                        "ChatBot",
-                                        "BOT_MENU:오늘의 날씨,7일 예보"
-                                    );
+                                    server.sendMsgToRoom(rId, "ChatBot", "BOT_MENU:오늘의 날씨,7일 예보");
                                 }
-                                else if (command.equals("today")) {
-                                    server.sendMsgToRoom(
-                                        rId,
-                                        "ChatBot",
-                                        "오늘의 날씨"
-                                    );
+                                else if (command.equals("game")) {
+                                    server.sendMsgToRoom(rId, "ChatBot", "BOT_MENU:캐치마인드,기타게임");
                                 }
-                                else if (command.equals("week")) {
+                                else if (command.equals("catchmind")) {
+                                    server.sendMsgToRoom(rId, "ChatBot", "GAME_JOIN:catchmind");
+                                }
+                             }
+                             break;
+ 
+                        case "/gamemsg":
+                            if (args.length >= 3) {
+                                int roomId = Integer.parseInt(args[1]);
+                                String content = msg.substring(msg.indexOf(args[2])).trim();
+                                
+                                server.gameManager.handleGameMessage(roomId, userName, content);
+                            }
+                            break;
+                            
+                        case "/catchmind_join": {
+                            if (args.length < 2) break;
+                            
+                            int rId = Integer.parseInt(args[1]);
+                            Room room = server.roomMap.get(rId);
+                            
+                            if (room != null) {
+                                // ✅ GameManager에 참여자 추가
+                                boolean added = server.gameManager.addParticipant(rId, userName, GameType.CATCH_MIND);
+                                
+                                if (added) {
+                                    int count = server.gameManager.getParticipantCount(rId);
                                     server.sendMsgToRoom(
                                         rId,
-                                        "ChatBot",
-                                        "7일 예보"
+                                        "System",
+                                        userName + "님이 캐치마인드에 참여했습니다. (" + count + "명)"
                                     );
                                 }
                             }
                             break;
+                        }
 
+                        case "/catchmind_start": {
+                            if (args.length < 2) break;
+                            
+                            int rId = Integer.parseInt(args[1]);
+                            Room room = server.roomMap.get(rId);
+                            
+                            // ✅ GameManager로 게임 시작 가능 확인
+                            if (!server.gameManager.canStartGame(rId, GameType.CATCH_MIND)) {
+                                server.sendMsgToRoom(rId, "System", 
+                                    "최소 2명 이상 참여해야 게임을 시작할 수 있습니다.");
+                                break;
+                            }
+                            
+                            if (room != null) {
+                                // ✅ GameManager에서 참여자 목록 가져오기
+                                Set<String> participants = server.gameManager.getWaitingParticipants(rId);
+                                if (participants == null) break;
+                                
+                                List<String> participantList = new ArrayList<>(participants);
+                                
+                                // 1. 게임 창 열기
+                                String participantStr = String.join(",", participantList);
+                                for (String participant : participantList) {
+                                    for (UserService u : server.UserVec) {
+                                        if (u.getUserName().equals(participant)) {
+                                            u.WriteOne("/game_participants " + rId + " " + participantStr);
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                server.AppendText("게임 창 열기: " + participantList);
+                                
+                                // 2. 버튼 비활성화
+                                server.sendMsgToRoom(rId, "ChatBot", "GAME_STARTED:catchmind");
+                                
+                                // 3. MessageBroadcaster 구현
+                                MessageBroadcaster broadcaster = new MessageBroadcaster() {
+                                    @Override
+                                    public void broadcastToRoom(int roomId, String message) {
+                                        Room r = server.roomMap.get(roomId);
+                                        if (r == null) return;
+                                        
+                                        // ✅ GameManager에서 활성 참여자 가져오기
+                                        Set<String> activeParticipants = server.gameManager.getActiveParticipants(roomId);
+                                        if (activeParticipants != null) {
+                                            r.broadcastToGameParticipants(message, activeParticipants);
+                                        }
+                                    }
+                                    
+                                    @Override
+                                    public void sendToUser(String userName, String message) {
+                                        for (UserService u : server.UserVec) {
+                                            if (u.getUserName().equals(userName)) {
+                                                u.WriteOne(message);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                };
+                                
+                                // 4. 게임 시작
+                                new Thread(() -> {
+                                    try {
+                                        Thread.sleep(500);
+                                        
+                                        // ✅ GameManager로 게임 시작
+                                        server.gameManager.startGame(rId, GameType.CATCH_MIND, broadcaster);
+                                        server.AppendText("캐치마인드 게임 시작: Room " + rId + " (" + participantList.size() + "명)");
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }).start();
+                            }
+                            break;
+                        }
+
+                        // ========================================
+                        // 🎨 그림 그리기 데이터 중계
+                        // ========================================
+                        case "/draw": {
+                            if (args.length >= 10) {
+                                int rId = Integer.parseInt(args[1]);
+                                Room room = server.roomMap.get(rId);
+                                
+                                if (room != null) {
+                                    // ✅ GameManager에서 활성 참여자 가져오기
+                                    Set<String> gameParticipants = server.gameManager.getActiveParticipants(rId);
+                                    
+                                    if (gameParticipants != null && !gameParticipants.isEmpty()) {
+                                        room.broadcastToGameParticipants(msg, gameParticipants);
+                                    }
+                                }
+                            }
+                            break;
+                        }
+
+                        case "/cleardraw": {
+                            if (args.length >= 2) {
+                                int rId = Integer.parseInt(args[1]);
+                                Room room = server.roomMap.get(rId);
+                                
+                                if (room != null) {
+                                    // ✅ GameManager에서 활성 참여자 가져오기
+                                    Set<String> gameParticipants = server.gameManager.getActiveParticipants(rId);
+                                    
+                                    if (gameParticipants != null && !gameParticipants.isEmpty()) {
+                                        room.broadcastToGameParticipants(msg, gameParticipants);
+                                    }
+                                }
+                            }
+                            break;
+                        }
+
+                        case "/endgame":
+                            if (args.length >= 2) {
+                                int roomId = Integer.parseInt(args[1]);
+                                
+                                // ✅ GameManager가 모든 정리 담당
+                                server.gameManager.endGame(roomId);
+                                
+                                Room room = server.roomMap.get(roomId);
+                                if (room != null) {
+                                    room.broadcast("/game_ended " + roomId);
+                                }
+                                
+                                server.AppendText("게임 종료: Room " + roomId);
+                            }
+                            break;
                     }
 
                 } catch (IOException e) {

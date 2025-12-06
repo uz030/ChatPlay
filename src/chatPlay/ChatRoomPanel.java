@@ -197,8 +197,110 @@ public class ChatRoomPanel extends JPanel {
     
 
     public void addBubble(ChatMessage msg) {
-    	ChatBubblePanel bubble = new ChatBubblePanel(msg, e -> onBotMenuClicked(e));
-
+        
+        // === 🎮 게임 참여 UI 처리 (GAME_JOIN) ===
+        if (msg.getContent().startsWith("GAME_JOIN:")) {
+            String gameType = msg.getContent().substring(10);
+            
+            JPanel joinPanel = new JPanel();
+            joinPanel.setLayout(new BoxLayout(joinPanel, BoxLayout.Y_AXIS));
+            joinPanel.setBackground(new Color(255, 250, 240));
+            joinPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(255, 200, 100), 2),
+                BorderFactory.createEmptyBorder(15, 15, 15, 15)
+            ));
+            joinPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
+            
+            JLabel titleLabel = new JLabel("🎮 캐치마인드 게임");
+            titleLabel.setFont(new Font("맑은 고딕", Font.BOLD, 16));
+            titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            
+            JLabel infoLabel = new JLabel("참여하시려면 아래 버튼을 눌러주세요!");
+            infoLabel.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+            infoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            
+            // ✅ 참여하기 버튼
+            JButton joinBtn = new JButton("게임 참여하기");
+            joinBtn.setFont(new Font("맑은 고딕", Font.BOLD, 14));
+            joinBtn.setBackground(new Color(100, 200, 255));
+            joinBtn.setForeground(Color.WHITE);
+            joinBtn.setFocusPainted(false);
+            joinBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+            joinBtn.setMaximumSize(new Dimension(200, 40));
+            
+            joinBtn.addActionListener(e -> {
+                try {
+                    parent.getDos().writeUTF("/catchmind_join " + roomData.getRoomId());
+                    joinBtn.setEnabled(false);
+                    joinBtn.setText("참여 완료!");
+                    joinBtn.setBackground(Color.GRAY);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            });
+            
+            // ✅ 게임 시작 버튼 (한 번만 누르면 모두에게 게임 창 열림)
+            JButton startBtn = new JButton("게임 시작 (2명 이상)");
+            startBtn.setFont(new Font("맑은 고딕", Font.BOLD, 14));
+            startBtn.setBackground(new Color(255, 100, 100));
+            startBtn.setForeground(Color.WHITE);
+            startBtn.setFocusPainted(false);
+            startBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+            startBtn.setMaximumSize(new Dimension(200, 40));
+            
+            startBtn.addActionListener(e -> {
+                try {
+                    parent.getDos().writeUTF("/catchmind_start " + roomData.getRoomId());
+                    // ✅ 버튼 비활성화
+                    startBtn.setEnabled(false);
+                    joinBtn.setEnabled(false);
+                    startBtn.setText("게임 시작됨");
+                    startBtn.setBackground(Color.GRAY);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            });
+            
+            joinPanel.add(titleLabel);
+            joinPanel.add(Box.createVerticalStrut(10));
+            joinPanel.add(infoLabel);
+            joinPanel.add(Box.createVerticalStrut(15));
+            joinPanel.add(joinBtn);
+            joinPanel.add(Box.createVerticalStrut(10));
+            joinPanel.add(startBtn);
+            
+            chatContentPanel.add(joinPanel);
+            chatContentPanel.add(Box.createVerticalStrut(10));
+            
+            chatContentPanel.revalidate();
+            chatContentPanel.repaint();
+            scrollToBottom();
+            return;
+        }
+        
+        // ✅ 게임 시작 알림 처리 (버튼 비활성화용)
+        if (msg.getContent().startsWith("GAME_STARTED:")) {
+            JLabel startedLabel = new JLabel("🎮 게임이 시작되었습니다!");
+            startedLabel.setFont(new Font("맑은 고딕", Font.BOLD, 14));
+            startedLabel.setForeground(new Color(0, 150, 0));
+            startedLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            
+            JPanel startedPanel = new JPanel();
+            startedPanel.setBackground(new Color(240, 255, 240));
+            startedPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            startedPanel.add(startedLabel);
+            
+            chatContentPanel.add(startedPanel);
+            chatContentPanel.add(Box.createVerticalStrut(10));
+            
+            chatContentPanel.revalidate();
+            chatContentPanel.repaint();
+            scrollToBottom();
+            return;
+        }
+        
+        // === 기존 버블 처리 (일반 메시지) ===
+        ChatBubblePanel bubble = new ChatBubblePanel(msg, e -> onBotMenuClicked(e));
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
@@ -207,14 +309,12 @@ public class ChatRoomPanel extends JPanel {
         wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, wrapper.getPreferredSize().height));
 
         chatContentPanel.add(wrapper);
-        
         chatContentPanel.add(Box.createVerticalStrut(2)); 
 
         chatContentPanel.revalidate();
         chatContentPanel.repaint();
         scrollToBottom();
     }
-
     private void scrollToBottom() {
         SwingUtilities.invokeLater(() -> {
             JScrollBar bar = scrollPane.getVerticalScrollBar();
@@ -288,6 +388,25 @@ public class ChatRoomPanel extends JPanel {
                     )
                 );
             }
+            else if (menu.equals("게임")) {
+                parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 게임");
+                parent.getDos().writeUTF("/bot game " + roomData.getRoomId());
+            }
+            else if (menu.equals("캐치마인드")) {
+                // 캐치마인드 실행 로직
+                parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 캐치마인드");
+                parent.getDos().writeUTF("/bot catchmind " + roomId);
+            }
+            else if (menu.equals("캐치마인드 참여하기")) {
+            	parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 캐치마인드 참여하기");
+            	parent.getDos().writeUTF("/catchmind_join " + roomId);
+            	parent.openCatchMindFrame(roomId);
+                
+            }
+            else if (menu.equals("기타게임")) {
+                parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 기타게임");
+            }
+
 
         } catch (Exception ex) {
             ex.printStackTrace();

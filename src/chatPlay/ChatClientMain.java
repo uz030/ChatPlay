@@ -1,6 +1,9 @@
 package chatPlay;
 
 import javax.swing.*;
+
+import catchmind.CatchMindFrame;
+
 import java.awt.*;
 import java.io.*;
 import java.net.Socket;
@@ -30,6 +33,11 @@ public class ChatClientMain extends JFrame {
 
     // 열린 채팅창 관리 (멀티 윈도우)
     private Map<Integer, ChatRoomFrame> openedRoomFrames = new HashMap<>();
+    
+    // 열린 게임창 관리
+    private Map<Integer, CatchMindFrame> openedGameFrames = new HashMap<>();
+    // 게임 메시지 핸들러
+    private GameMessageHandler gameMessageHandler;
 
     // 기본 프로필 이미지 
     private ImageIcon defaultProfileIcon;
@@ -67,6 +75,8 @@ public class ChatClientMain extends JFrame {
         mainContainer.add(homePanel, "Home");
 
         cardLayout.show(mainContainer, "Main");
+        
+        gameMessageHandler = new GameMessageHandler(this, openedGameFrames);
     }
 
     public void connectToServer(String username, ImageIcon icon) {
@@ -102,6 +112,10 @@ public class ChatClientMain extends JFrame {
             while (true) {
                 String msg = dis.readUTF();
                 System.out.println("Server: " + msg);
+                
+                if (gameMessageHandler.handleMessage(msg)) {
+                    continue; // 게임 메시지면 처리 완료
+                }
 
                 // --- 유저 목록 갱신 ---
                 if (msg.startsWith("/userlist ")) {
@@ -166,7 +180,6 @@ public class ChatClientMain extends JFrame {
 
                     boolean isMine = sender.equals(myProfile.getUsername());
 
-                    // 보낸 사람의 아이콘 찾기
                     ImageIcon senderIcon;
                     if (isMine) {
                         senderIcon = myProfile.getIcon();
@@ -174,13 +187,39 @@ public class ChatClientMain extends JFrame {
                         senderIcon = findUserIcon(sender);
                     }
 
-                    // ---------------------------------------------------
-                    // 1) 이미지 메시지 (@images 파일이름)
-                    // ---------------------------------------------------
+                    // ✅ GAME_STARTED 메시지 처리 (버튼 비활성화용)
+                    if (text.startsWith("GAME_STARTED:")) {
+                        ChatMessage chatMsg = new ChatMessage(sender, text, false, senderIcon);
+                        room.getMessageLog().addElement(chatMsg);
+
+                        SwingUtilities.invokeLater(() -> {
+                            if (openedRoomFrames.containsKey(rId)) {
+                                openedRoomFrames.get(rId).appendMessage(chatMsg);
+                            } else {
+                                homePanel.appendMessageToRoom(rId, chatMsg);
+                            }
+                        });
+                        continue;
+                    }
+
+                    // ✅ GAME_JOIN 메시지 처리 (참여 UI)
+                    if (text.startsWith("GAME_JOIN:")) {
+                        ChatMessage chatMsg = new ChatMessage(sender, text, false, senderIcon);
+                        room.getMessageLog().addElement(chatMsg);
+
+                        SwingUtilities.invokeLater(() -> {
+                            if (openedRoomFrames.containsKey(rId)) {
+                                openedRoomFrames.get(rId).appendMessage(chatMsg);
+                            } else {
+                                homePanel.appendMessageToRoom(rId, chatMsg);
+                            }
+                        });
+                        continue;
+                    }
+
+                    // 이미지 메시지
                     if (text.startsWith("@images")) {
-
-                        String fileName = text.substring(8).trim(); // "@images " 뒤 문자열
-
+                        String fileName = text.substring(8).trim();
                         ImageIcon img = loadEmojiImage(fileName);
 
                         ChatMessage chatMsg = new ChatMessage(sender, "", isMine, senderIcon);
@@ -198,12 +237,10 @@ public class ChatClientMain extends JFrame {
                             }
                         });
 
-                        continue; // 이미지 처리했으니 아래 텍스트 처리 스킵
+                        continue;
                     }
 
-                    // ---------------------------------------------------
-                    // 2) 일반 텍스트 메시지
-                    // ---------------------------------------------------
+                    // 일반 텍스트 메시지
                     ChatMessage chatMsg = new ChatMessage(sender, text, isMine, senderIcon);
                     room.getMessageLog().addElement(chatMsg);
 
@@ -215,7 +252,6 @@ public class ChatClientMain extends JFrame {
                         }
                     });
                 }
-
                 
                 // --- 참여자 목록 확인 결과 (UserListDialog 호출) ---
                 else if (msg.startsWith("/roomusers_result ")) {
@@ -290,6 +326,45 @@ public class ChatClientMain extends JFrame {
             System.out.println("서버 연결 끊김");
         }
     }
+    
+    public void openCatchMindFrame(int roomId) {
+        try {
+            // 서버에 참여 요청
+            dos.writeUTF("/catchmind_join " + roomId);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 게임 창 생성 (GameMessageHandler에서 호출)
+     */
+    public void createCatchMindFrame(int roomId, List<String> participants) {
+        SwingUtilities.invokeLater(() -> {
+            if (openedGameFrames.containsKey(roomId)) {
+                openedGameFrames.get(roomId).toFront();
+                return;
+            }
+            
+            CatchMindFrame frame = new CatchMindFrame(
+                roomId, 
+                myProfile.getUsername(), 
+                dos, 
+                participants
+            );
+            
+            openedGameFrames.put(roomId, frame);
+            
+            frame.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosed(java.awt.event.WindowEvent e) {
+                    openedGameFrames.remove(roomId);
+                }
+            });
+        });
+    }
+
+
 
     // 유저 이름으로 프로필 아이콘 찾는 헬퍼
     private ImageIcon findUserIcon(String username) {
