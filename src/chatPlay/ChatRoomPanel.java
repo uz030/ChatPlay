@@ -364,30 +364,42 @@ public class ChatRoomPanel extends JPanel {
     }
 
     private void onBotMenuClicked(ActionEvent e) {
-        String menu = e.getActionCommand();
+        String menu = e.getActionCommand(); // 클릭된 버튼의 텍스트
         int roomId = roomData.getRoomId();
 
         try {
+            // 1. 날씨 메인 버튼
             if (menu.equals("날씨")) {
-            	parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " " + "날씨");
+                parent.getDos().writeUTF("/roommsg " + roomId + " " + "날씨");
                 parent.getDos().writeUTF("/bot weather " + roomId);
             }
+            // 2. 뉴스 메인 버튼 
+            else if (menu.equals("뉴스")) {
+                parent.getDos().writeUTF("/roommsg " + roomId + " " + "뉴스");
+                parent.getDos().writeUTF("/bot news " + roomId);
+            }
+            // 3. 날씨 상세 메뉴 처리
             else if (menu.equals("오늘의 날씨")) {
                 ChatRoomFrame frame = (ChatRoomFrame) SwingUtilities.getWindowAncestor(this);
                 frame.switchToPanel(
-                    new weather.TodayWeatherPage(() ->
-                        frame.switchToPanel(frame.getChatRoomPanel())
-                    )
+                    new weather.TodayWeatherPage(() -> frame.switchToPanel(frame.getChatRoomPanel()))
                 );
             }
+            
             else if (menu.equals("7일 예보")) {
                 ChatRoomFrame frame = (ChatRoomFrame) SwingUtilities.getWindowAncestor(this);
                 frame.switchToPanel(
-                    new weather.WeekWeatherPage(() ->
-                        frame.switchToPanel(frame.getChatRoomPanel())
-                    )
+                    new weather.WeekWeatherPage(() -> frame.switchToPanel(frame.getChatRoomPanel()))
                 );
             }
+            else if (isNewsCategory(menu)) {
+                ChatRoomFrame frame = (ChatRoomFrame) SwingUtilities.getWindowAncestor(this);
+                
+                frame.switchToPanel(
+                    new news.NewsPage(menu, () -> frame.switchToPanel(frame.getChatRoomPanel()))
+                );
+            }
+            
             else if (menu.equals("게임")) {
                 parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 게임");
                 parent.getDos().writeUTF("/bot game " + roomData.getRoomId());
@@ -408,9 +420,18 @@ public class ChatRoomPanel extends JPanel {
             }
 
 
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+    }
+
+    private boolean isNewsCategory(String menu) {
+        String[] categories = {"속보", "정치", "경제", "사회", "세계", "IT/과학"};
+        for (String c : categories) {
+            if (c.equals(menu)) return true;
+        }
+        return false;
     }
     
     public void closeEmoji() {

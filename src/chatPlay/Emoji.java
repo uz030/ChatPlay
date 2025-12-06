@@ -6,7 +6,8 @@ import java.io.File;
 
 public class Emoji extends JPanel {
 
-    private ChatClientMain client;
+	private static final long serialVersionUID = 1L;
+	private ChatClientMain client;
     private ChatRoomData roomData;
     private ChatRoomPanel ownerPanel; 
 

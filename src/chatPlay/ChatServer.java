@@ -338,6 +338,13 @@ public class ChatServer extends JFrame {
                                 if (command.equals("weather")) {
                                     server.sendMsgToRoom(rId, "ChatBot", "BOT_MENU:오늘의 날씨,7일 예보");
                                 }
+                                else if (command.equals("news")) {
+                                    server.sendMsgToRoom(
+                                        rId,
+                                        "ChatBot",
+                                        "BOT_MENU:속보,정치,경제,사회,세계,IT/과학"
+                                    );
+                                }
                                 else if (command.equals("game")) {
                                     server.sendMsgToRoom(rId, "ChatBot", "BOT_MENU:캐치마인드,기타게임");
                                 }
