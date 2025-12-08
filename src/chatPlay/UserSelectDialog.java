@@ -15,8 +15,6 @@ public class UserSelectDialog extends JDialog {
     // 방 이름 입력 필드
     private JTextField roomNameField;
 
-    private boolean showHeader = true; // 추가된 플래그
-
     // 기존 생성자 유지 (방 만들기 용)
     public UserSelectDialog(ChatClientMain parent) {
         this(parent, parent, true);
@@ -30,8 +28,6 @@ public class UserSelectDialog extends JDialog {
     // ✅ 새로운 생성자: showHeader 로 모드 구분
     public UserSelectDialog(Window owner, ChatClientMain parent, boolean showHeader) {
         super(owner, showHeader ? "채팅방 생성" : "참여자 초대", ModalityType.APPLICATION_MODAL);
-        this.showHeader = showHeader;
-
         setSize(300, showHeader ? 500 : 430);
         setLocationRelativeTo(owner);  
         setLayout(new BorderLayout());

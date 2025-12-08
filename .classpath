@@ -7,6 +7,6 @@
 	</classpathentry>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry excluding="src/" kind="src" path=""/>
-	<classpathentry kind="lib" path="C:/Users/sseo0/Downloads/json-20250517.jar"/>
+	<classpathentry kind="lib" path="C:/Users/A/git/ChatPlay/lib/json-20250517.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -3,7 +3,6 @@ package chatPlay;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import news.*;
 
 
 public class ChatRoomPanel extends JPanel {
@@ -200,9 +199,9 @@ public class ChatRoomPanel extends JPanel {
 
     public void addBubble(ChatMessage msg) {
         
-        // === 🎮 게임 참여 UI 처리 (GAME_JOIN) ===
+        // 게임 참여 UI 처리 (GAME_JOIN)
         if (msg.getContent().startsWith("GAME_JOIN:")) {
-            String gameType = msg.getContent().substring(10);
+            final String gameType = msg.getContent().substring(10).trim();
             
             JPanel joinPanel = new JPanel();
             joinPanel.setLayout(new BoxLayout(joinPanel, BoxLayout.Y_AXIS));
@@ -213,7 +212,23 @@ public class ChatRoomPanel extends JPanel {
             ));
             joinPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
             
-            JLabel titleLabel = new JLabel("🎮 캐치마인드 게임");
+            // 게임 타입에 따라 제목과 색상 변경
+            String gameTitle;
+            Color borderColor;
+            if ("yacht".equals(gameType)) {
+                gameTitle = "🎲 요트다이스 게임";
+                borderColor = new Color(100, 200, 255);
+            } else {
+                gameTitle = "🎮 캐치마인드 게임";
+                borderColor = new Color(255, 200, 100);
+            }
+            
+            joinPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(borderColor, 2),
+                BorderFactory.createEmptyBorder(15, 15, 15, 15)
+            ));
+            
+            JLabel titleLabel = new JLabel(gameTitle);
             titleLabel.setFont(new Font("맑은 고딕", Font.BOLD, 16));
             titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
             
@@ -221,7 +236,7 @@ public class ChatRoomPanel extends JPanel {
             infoLabel.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
             infoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
             
-            // ✅ 참여하기 버튼
+            // 참여하기 버튼
             JButton joinBtn = new JButton("게임 참여하기");
             joinBtn.setFont(new Font("맑은 고딕", Font.BOLD, 14));
             joinBtn.setBackground(new Color(100, 200, 255));
@@ -232,7 +247,13 @@ public class ChatRoomPanel extends JPanel {
             
             joinBtn.addActionListener(e -> {
                 try {
-                    parent.getDos().writeUTF("/catchmind_join " + roomData.getRoomId());
+                    if ("yacht".equals(gameType)) {
+                        parent.getDos().writeUTF("/yacht_join " + roomData.getRoomId());
+                        parent.openYachtFrame(roomData.getRoomId());
+                    } else {
+                        parent.getDos().writeUTF("/catchmind_join " + roomData.getRoomId());
+                        parent.openCatchMindFrame(roomData.getRoomId());
+                    }
                     joinBtn.setEnabled(false);
                     joinBtn.setText("참여 완료!");
                     joinBtn.setBackground(Color.GRAY);
@@ -241,7 +262,7 @@ public class ChatRoomPanel extends JPanel {
                 }
             });
             
-            // ✅ 게임 시작 버튼 (한 번만 누르면 모두에게 게임 창 열림)
+            // 게임 시작 버튼 (한 번만 누르면 모두에게 게임 창 열림)
             JButton startBtn = new JButton("게임 시작 (2명 이상)");
             startBtn.setFont(new Font("맑은 고딕", Font.BOLD, 14));
             startBtn.setBackground(new Color(255, 100, 100));
@@ -252,7 +273,11 @@ public class ChatRoomPanel extends JPanel {
             
             startBtn.addActionListener(e -> {
                 try {
-                    parent.getDos().writeUTF("/catchmind_start " + roomData.getRoomId());
+                    if ("yacht".equals(gameType)) {
+                        parent.getDos().writeUTF("/yacht_start " + roomData.getRoomId());
+                    } else {
+                        parent.getDos().writeUTF("/catchmind_start " + roomData.getRoomId());
+                    }
                     // ✅ 버튼 비활성화
                     startBtn.setEnabled(false);
                     joinBtn.setEnabled(false);
@@ -280,7 +305,7 @@ public class ChatRoomPanel extends JPanel {
             return;
         }
         
-        // ✅ 게임 시작 알림 처리 (버튼 비활성화용)
+        // 게임 시작 알림 처리 (버튼 비활성화용)
         if (msg.getContent().startsWith("GAME_STARTED:")) {
             JLabel startedLabel = new JLabel("🎮 게임이 시작되었습니다!");
             startedLabel.setFont(new Font("맑은 고딕", Font.BOLD, 14));
@@ -417,8 +442,15 @@ public class ChatRoomPanel extends JPanel {
             	parent.openCatchMindFrame(roomId);
                 
             }
-            else if (menu.equals("기타게임")) {
-                parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 기타게임");
+            else if (menu.equals("요트다이스")) {
+                // 요트다이스 실행 로직
+                parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 요트다이스");
+                parent.getDos().writeUTF("/bot yacht " + roomId);
+            }
+            else if (menu.equals("요트다이스 참여하기")) {
+                parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 요트다이스 참여하기");
+                parent.getDos().writeUTF("/yacht_join " + roomId);
+                parent.openYachtFrame(roomId);
             }
 
 

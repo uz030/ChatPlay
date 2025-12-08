@@ -3,6 +3,7 @@ package chatPlay;
 import javax.swing.*;
 
 import catchmind.CatchMindFrame;
+import yacht.YachtFrame;
 
 import java.awt.*;
 import java.io.*;
@@ -36,6 +37,7 @@ public class ChatClientMain extends JFrame {
     
     // 열린 게임창 관리
     private Map<Integer, CatchMindFrame> openedGameFrames = new HashMap<>();
+    private Map<Integer, YachtFrame> openedYachtFrames = new HashMap<>();
     // 게임 메시지 핸들러
     private GameMessageHandler gameMessageHandler;
 
@@ -202,7 +204,7 @@ public class ChatClientMain extends JFrame {
                         continue;
                     }
 
-                    // ✅ GAME_JOIN 메시지 처리 (참여 UI)
+                    // GAME_JOIN 메시지 처리 (참여 UI)
                     if (text.startsWith("GAME_JOIN:")) {
                         ChatMessage chatMsg = new ChatMessage(sender, text, false, senderIcon);
                         room.getMessageLog().addElement(chatMsg);
@@ -299,7 +301,7 @@ public class ChatClientMain extends JFrame {
                         	    "참여자 목록",
                         	    profiles,
 
-                        	    // ★ 초대 버튼 동작 연결
+                        	    // 초대 버튼 동작 연결
                         	    () -> {
                         	        ChatRoomData room = roomMap.get(rId);
                         	        if (room != null) {
@@ -308,7 +310,7 @@ public class ChatClientMain extends JFrame {
                         	        }
                         	    },
 
-                        	    // ★ 나가기 버튼 동작 연결
+                        	    // 나가기 버튼 동작 연결
                         	    () -> {
                         	        try {
                         	            dos.writeUTF("/exitroom " + rId);
@@ -336,9 +338,16 @@ public class ChatClientMain extends JFrame {
         }
     }
     
-    /**
-     * 게임 창 생성 (GameMessageHandler에서 호출)
-     */
+    public void openYachtFrame(int roomId) {
+        try {
+            // 서버에 참여 요청
+            dos.writeUTF("/yacht_join " + roomId);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    // 캐치마인드 게임 창 생성 (GameMessageHandler에서 호출)
     public void createCatchMindFrame(int roomId, List<String> participants) {
         SwingUtilities.invokeLater(() -> {
             if (openedGameFrames.containsKey(roomId)) {
@@ -361,6 +370,34 @@ public class ChatClientMain extends JFrame {
                     openedGameFrames.remove(roomId);
                 }
             });
+        });
+    }
+    
+    // 요트다이스 게임 창 생성 (GameMessageHandler에서 호출)
+    public void createYachtFrame(int roomId, List<String> participants) {
+        SwingUtilities.invokeLater(() -> {
+            if (openedYachtFrames.containsKey(roomId)) {
+                openedYachtFrames.get(roomId).toFront();
+                return;
+            }
+            
+            YachtFrame frame = new YachtFrame(
+                roomId, 
+                myProfile.getUsername(), 
+                dos, 
+                participants
+            );
+            
+            openedYachtFrames.put(roomId, frame);
+            
+            frame.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosed(java.awt.event.WindowEvent e) {
+                    openedYachtFrames.remove(roomId);
+                }
+            });
+            
+            frame.setVisible(true);
         });
     }
 

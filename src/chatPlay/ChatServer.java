@@ -26,7 +26,6 @@ public class ChatServer extends JFrame {
     private int roomNumCounter = 0;
     
     private GameManager gameManager = new GameManager();
-    // ✅ 게임 관련 데이터는 모두 제거 - GameManager가 관리
 
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> {
@@ -160,7 +159,7 @@ public class ChatServer extends JFrame {
             }
         }
         
-        // ✅ 게임 참가자에게만 전송
+        // 게임 참가자에게만 전송
         public void broadcastToGameParticipants(String msg, Set<String> gameParticipants) {
             for (UserService u : participants) {
                 if (gameParticipants.contains(u.getUserName())) {
@@ -346,10 +345,13 @@ public class ChatServer extends JFrame {
                                     );
                                 }
                                 else if (command.equals("game")) {
-                                    server.sendMsgToRoom(rId, "ChatBot", "BOT_MENU:캐치마인드,기타게임");
+                                    server.sendMsgToRoom(rId, "ChatBot", "BOT_MENU:캐치마인드,요트다이스");
                                 }
                                 else if (command.equals("catchmind")) {
                                     server.sendMsgToRoom(rId, "ChatBot", "GAME_JOIN:catchmind");
+                                }
+                                else if (command.equals("yacht")) {
+                                    server.sendMsgToRoom(rId, "ChatBot", "GAME_JOIN:yacht");
                                 }
                              }
                              break;
@@ -362,7 +364,117 @@ public class ChatServer extends JFrame {
                                 server.gameManager.handleGameMessage(roomId, userName, content);
                             }
                             break;
+
+                        case "/game_yacht":
+                            if (args.length >= 3) {
+                                int roomId = Integer.parseInt(args[1]);
+                                String content = msg.substring(msg.indexOf(args[2])).trim();
+                                
+                                server.gameManager.handleGameMessage(roomId, userName, content);
+                            }
+                            break;
+
+                        case "/yacht_join": {
+                        	if (args.length < 2) break;
+                        
+                        	int rId = Integer.parseInt(args[1]);
+                        	Room room = server.roomMap.get(rId);
+                        
+                        	if (room != null) {
+                        		// GameManager에 참여자 추가
+                        		boolean added = server.gameManager.addParticipant(rId, userName, GameType.YACHT);
                             
+                        		if (added) {
+                        		    int count = server.gameManager.getParticipantCount(rId);
+                        			server.sendMsgToRoom(
+                        				rId,
+                        				"System",
+                        				userName + "님이 요트다이스에 참여했습니다. (" + count + "명)"
+                        			);
+                        		}
+                        	}
+                        	break;
+                        }
+
+                        case "/yacht_start": {
+                            if (args.length < 2) break;
+
+                            int rId = Integer.parseInt(args[1]);
+                            Room room = server.roomMap.get(rId);
+
+                            // GameManager로 게임 시작 가능 확인
+                            if (!server.gameManager.canStartGame(rId, GameType.YACHT)) {
+                                server.sendMsgToRoom(rId, "System",
+                                    "최소 2명 이상 참여해야 게임을 시작할 수 있습니다.");
+                                break;
+                            }
+
+                            if (room != null) {
+                                // GameManager에서 참여자 목록 가져오기
+                                Set<String> participants = server.gameManager.getWaitingParticipants(rId);
+                                if (participants == null) break;
+
+                                List<String> participantList = new ArrayList<>(participants);
+
+                                // 1. 게임 창 열기
+                                String participantStr = String.join(",", participantList);
+                                for (String participant : participantList) {
+                                    for (UserService u : server.UserVec) {
+                                        if (u.getUserName().equals(participant)) {
+                                            u.WriteOne("/game_participants " + rId + " yacht " + participantStr);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                server.AppendText("게임 창 열기: " + participantList);
+
+                                // 2. 버튼 비활성화
+                                server.sendMsgToRoom(rId, "ChatBot", "GAME_STARTED:yacht");
+
+                                // 3. MessageBroadcaster 구현
+                                MessageBroadcaster broadcaster = new MessageBroadcaster() {
+                                    @Override
+                                    public void broadcastToRoom(int roomId, String message) {
+                                        Room r = server.roomMap.get(roomId);
+                                        if (r == null) return;
+                                        
+                                        // GameManager에서 활성 참여자 가져오기
+                                        Set<String> activeParticipants = server.gameManager.getActiveParticipants(roomId);
+                                        if (activeParticipants != null) {
+                                            r.broadcastToGameParticipants(message, activeParticipants);
+                                        }
+                                    }
+                                    
+                                    @Override
+                                    public void sendToUser(String userName, String message) {
+                                        for (UserService u : server.UserVec) {
+                                            if (u.getUserName().equals(userName)) {
+                                                u.WriteOne(message);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                };
+
+                                // 4. 게임 시작
+                                new Thread(() -> {
+                                    try {
+                                        Thread.sleep(500);
+                                        
+                                        // GameManager로 게임 시작
+                                        server.gameManager.startGame(rId, GameType.YACHT, broadcaster);
+                                        server.AppendText("요트다이스 시작: Room " + rId + " (" + participantList.size() + "명)");
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }).start();
+                            }
+                            break;
+                        }
+
+                        
+                       
                         case "/catchmind_join": {
                             if (args.length < 2) break;
                             
@@ -370,7 +482,7 @@ public class ChatServer extends JFrame {
                             Room room = server.roomMap.get(rId);
                             
                             if (room != null) {
-                                // ✅ GameManager에 참여자 추가
+                                // GameManager에 참여자 추가
                                 boolean added = server.gameManager.addParticipant(rId, userName, GameType.CATCH_MIND);
                                 
                                 if (added) {
@@ -385,13 +497,15 @@ public class ChatServer extends JFrame {
                             break;
                         }
 
+
+
                         case "/catchmind_start": {
                             if (args.length < 2) break;
                             
                             int rId = Integer.parseInt(args[1]);
                             Room room = server.roomMap.get(rId);
                             
-                            // ✅ GameManager로 게임 시작 가능 확인
+                            // GameManager로 게임 시작 가능 확인
                             if (!server.gameManager.canStartGame(rId, GameType.CATCH_MIND)) {
                                 server.sendMsgToRoom(rId, "System", 
                                     "최소 2명 이상 참여해야 게임을 시작할 수 있습니다.");
@@ -399,7 +513,7 @@ public class ChatServer extends JFrame {
                             }
                             
                             if (room != null) {
-                                // ✅ GameManager에서 참여자 목록 가져오기
+                                // GameManager에서 참여자 목록 가져오기
                                 Set<String> participants = server.gameManager.getWaitingParticipants(rId);
                                 if (participants == null) break;
                                 
@@ -410,7 +524,7 @@ public class ChatServer extends JFrame {
                                 for (String participant : participantList) {
                                     for (UserService u : server.UserVec) {
                                         if (u.getUserName().equals(participant)) {
-                                            u.WriteOne("/game_participants " + rId + " " + participantStr);
+                                            u.WriteOne("/game_participants " + rId + " catchmind " + participantStr);
                                             break;
                                         }
                                     }
@@ -451,7 +565,7 @@ public class ChatServer extends JFrame {
                                     try {
                                         Thread.sleep(500);
                                         
-                                        // ✅ GameManager로 게임 시작
+                                        // GameManager로 게임 시작
                                         server.gameManager.startGame(rId, GameType.CATCH_MIND, broadcaster);
                                         server.AppendText("캐치마인드 게임 시작: Room " + rId + " (" + participantList.size() + "명)");
                                     } catch (Exception e) {
@@ -462,16 +576,18 @@ public class ChatServer extends JFrame {
                             break;
                         }
 
-                        // ========================================
-                        // 🎨 그림 그리기 데이터 중계
-                        // ========================================
                         case "/draw": {
                             if (args.length >= 10) {
                                 int rId = Integer.parseInt(args[1]);
                                 Room room = server.roomMap.get(rId);
                                 
                                 if (room != null) {
-                                    // ✅ GameManager에서 활성 참여자 가져오기
+                                    // 캐치마인드 게임인지 확인 
+                                    if (!server.gameManager.isCatchMindGame(rId)) {
+                                        break;
+                                    }
+                                    
+                                    // GameManager에서 활성 참여자 가져오기
                                     Set<String> gameParticipants = server.gameManager.getActiveParticipants(rId);
                                     
                                     if (gameParticipants != null && !gameParticipants.isEmpty()) {
@@ -488,7 +604,12 @@ public class ChatServer extends JFrame {
                                 Room room = server.roomMap.get(rId);
                                 
                                 if (room != null) {
-                                    // ✅ GameManager에서 활성 참여자 가져오기
+                                    // 캐치마인드 게임인지 확인 
+                                    if (!server.gameManager.isCatchMindGame(rId)) {
+                                        break;
+                                    }
+                                    
+                                    // GameManager에서 활성 참여자 가져오기
                                     Set<String> gameParticipants = server.gameManager.getActiveParticipants(rId);
                                     
                                     if (gameParticipants != null && !gameParticipants.isEmpty()) {
@@ -503,7 +624,7 @@ public class ChatServer extends JFrame {
                             if (args.length >= 2) {
                                 int roomId = Integer.parseInt(args[1]);
                                 
-                                // ✅ GameManager가 모든 정리 담당
+                                // GameManager가 모든 정리 담당
                                 server.gameManager.endGame(roomId);
                                 
                                 Room room = server.roomMap.get(roomId);
@@ -514,6 +635,7 @@ public class ChatServer extends JFrame {
                                 server.AppendText("게임 종료: Room " + roomId);
                             }
                             break;
+                            
                     }
 
                 } catch (IOException e) {

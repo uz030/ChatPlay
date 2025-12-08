@@ -2,10 +2,14 @@ package game;
 
 import java.util.*;
 import catchmind.CatchMindGame;
+import yacht.YachtGame;
 
 public class GameManager {
 
     private Map<Integer, GameInstance> games = new HashMap<>();
+    
+    // 게임 타입 저장 (방 ID -> 게임 타입)
+    private Map<Integer, GameType> gameTypes = new HashMap<>();
     
     // 게임별 대기 중인 참여자 (게임 시작 전)
     private Map<Integer, Set<String>> waitingParticipants = new HashMap<>();
@@ -41,8 +45,7 @@ public class GameManager {
     private int getMinPlayers(GameType gameType) {
         switch (gameType) {
             case CATCH_MIND: return 2;
-            case OX_QUIZ: return 1;
-            case WORD_CHAIN: return 2;
+            case YACHT: return 2;
             default: return 2;
         }
     }
@@ -73,15 +76,10 @@ public class GameManager {
             case CATCH_MIND:
                 game = new CatchMindGame(roomId, participantList);
                 break;
-                
-            case OX_QUIZ:
-                // game = new OXQuizGame(roomId, participantList);
+            case YACHT:  
+                game = new YachtGame(roomId, participantList);
                 break;
-                
-            case WORD_CHAIN:
-                // game = new WordChainGame(roomId, participantList);
-                break;
-                
+                  
             default:
                 throw new IllegalArgumentException("Unknown game type: " + type);
         }
@@ -89,6 +87,7 @@ public class GameManager {
         if (game != null) {
             game.setMessageBroadcaster(broadcaster);
             games.put(roomId, game);
+            gameTypes.put(roomId, type); // 게임 타입 저장
             
             // 활성 참여자로 이동
             activeParticipants.put(roomId, new HashSet<>(participants));
@@ -115,6 +114,9 @@ public class GameManager {
         if (game != null) {
             game.end();
         }
+        
+        // 게임 타입 제거
+        gameTypes.remove(roomId);
         
         // 참여자 목록 정리
         activeParticipants.remove(roomId);
@@ -143,5 +145,15 @@ public class GameManager {
      
     public synchronized Set<String> getWaitingParticipants(int roomId) {
         return waitingParticipants.get(roomId);
+    }
+    
+    // 게임 타입 조회
+    public synchronized GameType getGameType(int roomId) {
+        return gameTypes.get(roomId);
+    }
+    
+    // 캐치마인드 게임인지 확인
+    public synchronized boolean isCatchMindGame(int roomId) {
+        return gameTypes.get(roomId) == GameType.CATCH_MIND;
     }
 }
