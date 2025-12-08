@@ -5,8 +5,8 @@ import java.awt.*;
 
 public class YachtPanel extends JPanel {
 
-    private YachtFrame parent;
-    private int[] diceValues = {1, 1, 1, 1, 1};
+	private static final long serialVersionUID = 1L;
+	private int[] diceValues = {1, 1, 1, 1, 1};
     private boolean[] keepDice = new boolean[5];
     private JButton btnRoll;
     private JLabel infoLabel;
@@ -16,7 +16,6 @@ public class YachtPanel extends JPanel {
     private JButton[] diceButtons = new JButton[5];
 
     public YachtPanel(YachtFrame parent) {
-        this.parent = parent;
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
 
