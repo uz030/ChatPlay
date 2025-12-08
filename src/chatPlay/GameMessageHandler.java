@@ -1,6 +1,7 @@
 package chatPlay;
 
 import catchmind.CatchMindFrame;
+import yacht.YachtFrame;
 import java.awt.Color;
 import java.util.*;
 import javax.swing.SwingUtilities;
@@ -24,16 +25,21 @@ public class GameMessageHandler {
         
         // === 게임 참가자 목록 (게임 창 생성) ===
         if (msg.startsWith("/game_participants ")) {
-            String[] parts = msg.split(" ", 3);
+            String[] parts = msg.split(" ", 4);
             int roomId = Integer.parseInt(parts[1]);
-            String[] participantNames = parts[2].split(",");
+            String gameType = parts[2]; // "yacht" or "catchmind"
+            String[] participantNames = parts[3].split(",");
             
             List<String> participants = new ArrayList<>();
             for (String name : participantNames) {
                 participants.add(name.trim());
             }
             
-            client.createCatchMindFrame(roomId, participants);
+            if ("yacht".equals(gameType)) {
+                client.createYachtFrame(roomId, participants);
+            } else {
+                client.createCatchMindFrame(roomId, participants);
+            }
             return true;
         }
         
@@ -140,6 +146,27 @@ public class GameMessageHandler {
                     frame.clearRemoteCanvas();
                 }
             });
+            return true;
+        }
+        
+        // === 요트다이스 게임 시작 ===
+        else if (msg.startsWith("/yacht_start ")) {
+            // 게임 시작 신호 (이미 프레임은 생성되었으므로 추가 처리 불필요)
+            // 상태 업데이트는 /yacht_update로 따로 전송됨
+            return true;
+        }
+        
+        // === 요트다이스 게임 상태 업데이트 ===
+        else if (msg.startsWith("/yacht_update ")) {
+            String[] parts = msg.split(" ", 3);
+            if (parts.length >= 3) {
+                int roomId = Integer.parseInt(parts[1]);
+                String stateData = parts[2];
+                
+                SwingUtilities.invokeLater(() -> {
+                    YachtFrame.updateGameInstance(roomId, stateData);
+                });
+            }
             return true;
         }
         
