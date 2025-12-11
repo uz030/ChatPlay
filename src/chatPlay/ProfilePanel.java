@@ -33,7 +33,6 @@ public class ProfilePanel extends JPanel {
 
         // ✅ 내 사진 - 원형으로 표시
         JLabel imgLabel = new JLabel();
-        CircularProfileIcon.setCircularIcon(imgLabel, myProfile.getIcon(), 60);
         
         // 이름과 상태메시지를 수직으로 배치하기 위한 패널
         JPanel myInfoPanel = new JPanel(new GridLayout(2, 1));
@@ -136,10 +135,6 @@ public class ProfilePanel extends JPanel {
                     // 기본 아이콘 생성
                 }
             }
-            
-            // 원형 아이콘으로 변환
-            iconLabel.setIcon(CircularProfileIcon.createCircularIcon(icon, 45));
-
             // 2. 텍스트 설정
             nameLabel.setText(value.getUsername());
             
