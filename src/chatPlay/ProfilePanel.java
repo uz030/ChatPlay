@@ -31,8 +31,9 @@ public class ProfilePanel extends JPanel {
             }
         });
 
-        // 내 사진
-        JLabel imgLabel = new JLabel(getScaledIcon(myProfile.getIcon(), 60, 60));
+        // ✅ 내 사진 - 원형으로 표시
+        JLabel imgLabel = new JLabel();
+        CircularProfileIcon.setCircularIcon(imgLabel, myProfile.getIcon(), 60);
         
         // 이름과 상태메시지를 수직으로 배치하기 위한 패널
         JPanel myInfoPanel = new JPanel(new GridLayout(2, 1));
@@ -54,7 +55,6 @@ public class ProfilePanel extends JPanel {
         profileBox.add(myInfoPanel);
 
         add(profileBox, BorderLayout.NORTH);
-
 
         // 2. 중앙: 친구 목록 (JList + 커스텀 렌더러)
         JList<UserProfile> friendList = new JList<>(parent.getUserListModel());
@@ -83,15 +83,6 @@ public class ProfilePanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
     }
 
-    // 이미지 크기 조절 헬퍼 
-    private ImageIcon getScaledIcon(ImageIcon src, int w, int h) {
-        if (src == null) {
-            // 이미지가 없으면 빈 아이콘 반환 (또는 기본 이미지 로드)
-            return new ImageIcon(); 
-        }
-        return new ImageIcon(src.getImage().getScaledInstance(w, h, Image.SCALE_SMOOTH));
-    }
-
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -104,8 +95,8 @@ public class ProfilePanel extends JPanel {
     // 친구 목록의 각 항목(프로필 사진 + 이름 + 상태)을 그리는 렌더러
     class ProfileListRenderer extends JPanel implements ListCellRenderer<UserProfile> {
 
-		private static final long serialVersionUID = 1L;
-		private JLabel iconLabel;
+        private static final long serialVersionUID = 1L;
+        private JLabel iconLabel;
         private JLabel nameLabel;
         private JLabel statusLabel;
 
@@ -136,22 +127,18 @@ public class ProfilePanel extends JPanel {
 
         @Override
         public Component getListCellRendererComponent(JList<? extends UserProfile> list, UserProfile value, int index, boolean isSelected, boolean cellHasFocus) {
-            // 1. 프로필 사진 설정
+            // ✅ 1. 프로필 사진 설정 - 원형으로
             ImageIcon icon = value.getIcon();
-            // 이미지가 없으면 기본 이미지 로드 시도
             if (icon == null) {
                 try {
                     icon = new ImageIcon(getClass().getResource("/images/basic_profile.png"));
                 } catch (Exception e) {
-                    // 로드 실패 시 빈 아이콘 유지
+                    // 기본 아이콘 생성
                 }
             }
             
-            if (icon != null) {
-                iconLabel.setIcon(getScaledIcon(icon, 45, 45)); 
-            } else {
-                iconLabel.setIcon(null);
-            }
+            // 원형 아이콘으로 변환
+            iconLabel.setIcon(CircularProfileIcon.createCircularIcon(icon, 45));
 
             // 2. 텍스트 설정
             nameLabel.setText(value.getUsername());

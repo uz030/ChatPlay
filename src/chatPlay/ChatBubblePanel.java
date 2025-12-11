@@ -10,85 +10,108 @@ public class ChatBubblePanel extends JPanel {
     private static final int MAX_W = 220; 
 
     // 생성자 (ActionListener 포함 버전 - 챗봇 기능용)
-    public ChatBubblePanel(ChatMessage msg, ActionListener onBotMenuClick) {
-        setLayout(new BorderLayout());
+    public ChatBubblePanel(ChatMessage msg, ActionListener botMenuListener) {
+        setLayout(new BorderLayout(10, 5));
         setOpaque(false);
-        setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
 
-        // 1. 시스템 메시지
-        if (msg.getSender().equals("System")) {
-            JPanel sysBubble = new JPanel() {
-                protected void paintComponent(Graphics g) {
-                    super.paintComponent(g);
-                    Graphics2D g2 = (Graphics2D) g;
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(new Color(220, 230, 240));  
-                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
-                }
-            };
-            sysBubble.setLayout(new BorderLayout());
-            sysBubble.setOpaque(false);
-            sysBubble.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
-            JLabel label = new JLabel(msg.getContent(), SwingConstants.CENTER);
-            label.setForeground(new Color(70, 70, 70));
-            label.setFont(new Font("맑은 고딕", Font.PLAIN, 13));
-            sysBubble.add(label, BorderLayout.CENTER);
-            JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 8));
-            wrapper.setOpaque(false);
-            wrapper.add(sysBubble);
-            add(wrapper, BorderLayout.CENTER);
-            return;  
-        }
+        boolean isMe = msg.isMine();
+        String sender = msg.getSender();
+        String content = msg.getContent();
 
-        // 2. 챗봇 메시지
-        if (msg.isBotMessage()) {
-            add(createBotPanel(msg, onBotMenuClick), BorderLayout.WEST);
-        }
+        // === BOT 메뉴 처리 ===
+        if (content.startsWith("BOT_MENU:")) {
+            String menuStr = content.substring(9);
+            String[] items = menuStr.split(",");
 
-        // 3. 일반 메시지
-        else {
-            if (msg.isMine()) {
-                // [나] 오른쪽 정렬
-                JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-                rightPanel.setOpaque(false);
-                rightPanel.add(createBubble(msg, true));
-                add(rightPanel, BorderLayout.EAST);
-            } else {
-                // 전체 컨테이너 (이미지 + 내용)
-                JPanel container = new JPanel(new BorderLayout(8, 0)); // 수평 간격 8
-                container.setOpaque(false);
+            JPanel menuPanel = new JPanel();
+            menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.Y_AXIS));
+            menuPanel.setOpaque(false);
 
-                // (1) 프로필 사진 (왼쪽 상단)
-                JLabel iconLabel = new JLabel(getScaledIcon(msg.getSenderIcon(), 40, 40));
-                // 상단 정렬을 위해 패널로 감쌈
-                JPanel iconPanel = new JPanel(new BorderLayout());
-                iconPanel.setOpaque(false);
-                iconPanel.add(iconLabel, BorderLayout.NORTH);
-                
-                container.add(iconPanel, BorderLayout.WEST);
+            for (String item : items) {
+                JButton btn = new JButton(item.trim());
+                btn.setFont(new Font("맑은 고딕", Font.BOLD, 13));
+                btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+                btn.setMaximumSize(new Dimension(200, 35));
+                btn.setBackground(new Color(100, 149, 237));
+                btn.setForeground(Color.WHITE);
+                btn.setFocusPainted(false);
+                btn.setBorderPainted(false);
 
-                // (2) 텍스트 내용 (이름 + 말풍선)
-                JPanel contentPanel = new JPanel(new BorderLayout());
-                contentPanel.setOpaque(false);
-                
-                JLabel name = new JLabel(msg.getSender());
-                name.setFont(new Font("맑은 고딕", Font.PLAIN, 11));
-                name.setBorder(BorderFactory.createEmptyBorder(0, 2, 2, 0));
-                
-                JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-                bubbleWrapper.setOpaque(false);
-                bubbleWrapper.add(createBubble(msg, false));
-
-                contentPanel.add(name, BorderLayout.NORTH);
-                contentPanel.add(bubbleWrapper, BorderLayout.CENTER);
-
-                container.add(contentPanel, BorderLayout.CENTER);
-                
-                add(container, BorderLayout.WEST);
+                btn.addActionListener(botMenuListener);
+                menuPanel.add(btn);
+                menuPanel.add(Box.createVerticalStrut(8));
             }
+
+            add(menuPanel, BorderLayout.CENTER);
+            return;
+        }
+
+        // === 일반 메시지 ===
+        JPanel contentPanel = new JPanel(new BorderLayout(8, 0));
+        contentPanel.setOpaque(false);
+
+        // ✅ 프로필 이미지 - 원형으로 표시
+        if (!isMe) {
+            JLabel iconLabel = new JLabel();
+            ImageIcon icon = msg.getSenderIcon();
+            if (icon != null) {
+                iconLabel.setIcon(CircularProfileIcon.createCircularIcon(icon, 35));
+            } else {
+                iconLabel.setIcon(CircularProfileIcon.createDefaultCircularIcon(35));
+            }
+            iconLabel.setVerticalAlignment(SwingConstants.TOP);
+            contentPanel.add(iconLabel, BorderLayout.WEST);
+        }
+
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        textPanel.setOpaque(false);
+
+        if (!isMe) {
+            JLabel nameLabel = new JLabel(sender);
+            nameLabel.setFont(new Font("맑은 고딕", Font.BOLD, 11));
+            nameLabel.setForeground(Color.GRAY);
+            nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            textPanel.add(nameLabel);
+            textPanel.add(Box.createVerticalStrut(3));
+        }
+
+        // 이미지 메시지
+        if (msg.getType() == ChatMessage.MessageType.IMAGE) {
+            JLabel imgLabel = new JLabel(msg.getImageIcon());
+            imgLabel.setAlignmentX(isMe ? Component.RIGHT_ALIGNMENT : Component.LEFT_ALIGNMENT);
+            textPanel.add(imgLabel);
+        } 
+        // 텍스트 메시지
+        else {
+            JTextArea textArea = new JTextArea(content);
+            textArea.setEditable(false);
+            textArea.setLineWrap(true);
+            textArea.setWrapStyleWord(true);
+            textArea.setFont(new Font("맑은 고딕", Font.PLAIN, 13));
+            textArea.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+
+            if (isMe) {
+                textArea.setBackground(new Color(255, 235, 59));
+                textArea.setAlignmentX(Component.RIGHT_ALIGNMENT);
+            } else {
+                textArea.setBackground(Color.WHITE);
+                textArea.setAlignmentX(Component.LEFT_ALIGNMENT);
+            }
+
+            textArea.setMaximumSize(new Dimension(250, Integer.MAX_VALUE));
+            textPanel.add(textArea);
+        }
+
+        if (isMe) {
+            contentPanel.add(textPanel, BorderLayout.EAST);
+            add(contentPanel, BorderLayout.EAST);
+        } else {
+            contentPanel.add(textPanel, BorderLayout.CENTER);
+            add(contentPanel, BorderLayout.WEST);
         }
     }
-    
+
     private ImageIcon getScaledIcon(ImageIcon src, int w, int h) {
         if (src == null) {
             try {
@@ -147,24 +170,15 @@ public class ChatBubblePanel extends JPanel {
     
     
     private JPanel createImagePanel(ChatMessage msg, boolean isMine) {
-
-        // 파일명 가져오기
-        String fileName = msg.getFileName();
         ImageIcon icon = msg.getImageIcon();
-
-        // 만약 미리 로딩된 아이콘이 없다면 직접 로딩
+        
+        // 이미 리사이징된 아이콘 사용
         if (icon == null) {
-            icon = new ImageIcon("src/images/icon/" + fileName);
+            icon = new ImageIcon(); // 빈 아이콘
         }
 
-        int maxW = 90;
-        int maxH = 90;
-
-        Image img = icon.getImage().getScaledInstance(maxW, maxH, Image.SCALE_SMOOTH);
-        ImageIcon scaled = new ImageIcon(img);
-
-        JLabel imgLabel = new JLabel(scaled);
-        imgLabel.setPreferredSize(new Dimension(maxW, maxH));   // ⭐ 중요!!!!
+        JLabel imgLabel = new JLabel(icon);
+        imgLabel.setPreferredSize(new Dimension(180, 180));
 
         JPanel bubble = new JPanel(new BorderLayout()) {
             @Override
@@ -180,13 +194,10 @@ public class ChatBubblePanel extends JPanel {
         bubble.setOpaque(false);
         bubble.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
         bubble.add(imgLabel, BorderLayout.CENTER);
-
-        // ⭐ 버블 크기를 이미지 크기에 맞게 줄이기
-        bubble.setMaximumSize(new Dimension(maxW + 20, maxH + 20));
+        bubble.setMaximumSize(new Dimension(200, 200));
 
         return bubble;
     }
-
     
     // 봇 패널 생성
     private JPanel createBotPanel(ChatMessage msg, ActionListener onBotMenuClick) {

@@ -78,20 +78,37 @@ public class ProfileDetailDialog extends JDialog {
 
     private void changeImage(boolean isBg) {
         JFileChooser ch = new JFileChooser();
-        ch.setFileFilter(new FileNameExtensionFilter("Images", "png", "jpg"));
-
+        ch.setFileFilter(new FileNameExtensionFilter("Images", "png", "jpg", "jpeg"));
+        
         if (ch.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             ImageIcon icon = new ImageIcon(ch.getSelectedFile().getAbsolutePath());
-
+            
             if (isBg) {
                 profile.setBackgroundImage(icon);
                 bgLabel.setIcon(getScaledIcon(icon, 320, 220));
+                
+                // ✅ 서버에 배경 이미지 업로드
+                uploadToServer("background", icon);
+                
             } else {
                 profile.setIcon(icon);
                 imgLabel.setIcon(getScaledIcon(icon, 80, 80));
+                
+                // ✅ 서버에 프로필 이미지 업로드
+                uploadToServer("icon", icon);
             }
         }
     }
+    
+    private void uploadToServer(String imageType, ImageIcon icon) {
+        // owner가 ChatClientMain인지 확인
+        Frame owner = (Frame) getOwner();
+        if (owner instanceof ChatClientMain) {
+            ChatClientMain parent = (ChatClientMain) owner;
+            parent.uploadProfileImage(imageType, icon);
+        }
+    }
+
 
     private ImageIcon getScaledIcon(ImageIcon src, int w, int h) {
         if (src == null) return null;

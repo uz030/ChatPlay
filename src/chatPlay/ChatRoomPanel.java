@@ -3,6 +3,7 @@ package chatPlay;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.io.File;
 
 
 public class ChatRoomPanel extends JPanel {
@@ -104,13 +105,57 @@ public class ChatRoomPanel extends JPanel {
         btnFile.setContentAreaFilled(false);
         btnFile.setFocusPainted(false);
 
+        btnFile.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "이미지 파일", "jpg", "jpeg", "png", "gif", "bmp"
+            ));
+            
+            int result = chooser.showOpenDialog(ChatRoomPanel.this);
+            if (result != JFileChooser.APPROVE_OPTION) return;
+            
+            File file = chooser.getSelectedFile();
+            if (file == null || !file.exists()) {
+                JOptionPane.showMessageDialog(ChatRoomPanel.this,
+                    "파일을 찾을 수 없습니다.", "오류", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // 파일 크기 제한 (5MB)
+            long maxSize = 5 * 1024 * 1024;
+            if (file.length() > maxSize) {
+                JOptionPane.showMessageDialog(ChatRoomPanel.this,
+                    "파일 크기가 너무 큽니다. (최대 5MB)", "오류", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            try {
+                // ✅ 고유한 파일명 생성 (시간 + 원본파일명)
+                String uniqueFileName = System.currentTimeMillis() + "_" + file.getName();
+                
+                // ✅ 파일 전송 (파일 데이터 + 메타정보)
+                byte[] fileData = java.nio.file.Files.readAllBytes(file.toPath());
+                
+                // 서버로 파일 업로드 명령
+                parent.getDos().writeUTF("/upload_image " + roomData.getRoomId() + " " + uniqueFileName);
+                parent.getDos().writeInt(fileData.length);
+                parent.getDos().write(fileData);
+                parent.getDos().flush();
+                
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(ChatRoomPanel.this,
+                    "이미지 전송에 실패했습니다.\n" + ex.getMessage(),
+                    "오류", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
         JPanel filePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         filePanel.setOpaque(false);
         filePanel.add(btnFile);
 
         bottom.add(filePanel);
-        bottom.add(Box.createHorizontalStrut(8));    
-
+        bottom.add(Box.createHorizontalStrut(8));
         /* ─────────────── 입력 박스 ─────────────── */
         JPanel inputBox = new JPanel(new BorderLayout());
         inputBox.setBackground(Color.WHITE);
@@ -199,6 +244,37 @@ public class ChatRoomPanel extends JPanel {
 
     public void addBubble(ChatMessage msg) {
         
+    	if (msg.getContent().startsWith("@imagefile ")) {
+            String fileName = msg.getContent().substring(11).trim();
+            File imageFile = new File("shared_images/" + fileName);
+            
+            if (imageFile.exists()) {
+                try {
+                    ImageIcon icon = new ImageIcon(imageFile.getAbsolutePath());
+                    
+                    // 이미지 리사이징
+                    Image scaledImage = icon.getImage().getScaledInstance(
+                        300, 300, Image.SCALE_SMOOTH
+                    );
+                    ImageIcon scaledIcon = new ImageIcon(scaledImage);
+                    
+                    msg.setType(ChatMessage.MessageType.IMAGE);
+                    msg.setFileName(fileName);
+                    msg.setImageIcon(scaledIcon);
+                    
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    JLabel errorLabel = new JLabel("[이미지 로드 실패: " + fileName + "]");
+                    errorLabel.setForeground(Color.RED);
+                    chatContentPanel.add(errorLabel);
+                    chatContentPanel.revalidate();
+                    chatContentPanel.repaint();
+                    scrollToBottom();
+                    return;
+                }
+            }
+        }
+    	
         // 게임 참여 UI 처리 (GAME_JOIN)
         if (msg.getContent().startsWith("GAME_JOIN:")) {
             final String gameType = msg.getContent().substring(10).trim();
