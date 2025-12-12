@@ -75,6 +75,12 @@ public class ChatHome extends JPanel {
         centerPanel.revalidate();
         centerPanel.repaint();
     }
+    
+    public void refreshProfile() {
+        // ProfilePanel 갱신
+        showProfilePanel();
+    }
+
 
     class MenuPanel extends JPanel {
 

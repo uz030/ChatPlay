@@ -43,3 +43,5 @@ public class UserProfile {
     public ImageIcon getBackgroundImage() { return backgroundImage; }
     public void setBackgroundImage(ImageIcon bg) { this.backgroundImage = bg; }
 }
+
+

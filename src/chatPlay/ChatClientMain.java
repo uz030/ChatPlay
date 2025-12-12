@@ -91,6 +91,11 @@ public class ChatClientMain extends JFrame {
             dos.flush();
 
             this.myProfile = new UserProfile(username, icon);
+            
+            if (icon != null && icon.getImage() != null) {
+                uploadProfileImage("icon", icon);
+            }
+
 
             new Thread(this::listenToServer).start();
 
@@ -109,6 +114,35 @@ public class ChatClientMain extends JFrame {
         }
     }
 
+    public void uploadProfileImage(String imageType, ImageIcon icon) {
+        try {
+            // ImageIcon을 byte[]로 변환
+            java.awt.image.BufferedImage buffered = new java.awt.image.BufferedImage(
+                icon.getIconWidth(), 
+                icon.getIconHeight(), 
+                java.awt.image.BufferedImage.TYPE_INT_ARGB
+            );
+            Graphics g = buffered.createGraphics();
+            icon.paintIcon(null, g, 0, 0);
+            g.dispose();
+            
+            // PNG로 저장
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(buffered, "png", baos);
+            byte[] imageBytes = baos.toByteArray();
+            
+            String fileName = imageType + ".png";
+            
+            dos.writeUTF("/upload_profile " + imageType + " " + fileName);
+            dos.writeInt(imageBytes.length);
+            dos.write(imageBytes);
+            dos.flush();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
     private void listenToServer() {
         try {
             while (true) {
@@ -122,13 +156,28 @@ public class ChatClientMain extends JFrame {
                 // --- 유저 목록 갱신 ---
                 if (msg.startsWith("/userlist ")) {
                     String[] users = msg.substring(10).split(",");
-
+                    
                     SwingUtilities.invokeLater(() -> {
+                        Set<String> existingUsers = new HashSet<>();
+                        for (int i = 0; i < userListModel.getSize(); i++) {
+                            existingUsers.add(userListModel.getElementAt(i).getUsername());
+                        }
+                        
                         userListModel.clear();
                         for (String u : users) {
                             String name = u.trim();
                             if (!name.isEmpty() && !name.equals(myProfile.getUsername())) {
-                                userListModel.addElement(new UserProfile(name));
+                                UserProfile user = new UserProfile(name);
+                                userListModel.addElement(user);
+                                
+                                // 새 사용자면 프로필 이미지 요청
+                                if (!existingUsers.contains(name)) {
+                                    try {
+                                        dos.writeUTF("/request_profile " + name);
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }
                             }
                         }
                     });
@@ -171,8 +220,7 @@ public class ChatClientMain extends JFrame {
 
                 // --- 채팅 메시지 수신 ---
                 else if (msg.startsWith("/roommsg ")) {
-
-                    String[] parts = msg.split(" ", 4);
+                	String[] parts = msg.split(" ", 4);
                     int rId = Integer.parseInt(parts[1]);
                     String sender = parts[2];
                     String text = parts[3];
@@ -181,15 +229,46 @@ public class ChatClientMain extends JFrame {
                     if (room == null) continue;
 
                     boolean isMine = sender.equals(myProfile.getUsername());
-
-                    ImageIcon senderIcon;
-                    if (isMine) {
-                        senderIcon = myProfile.getIcon();
-                    } else {
-                        senderIcon = findUserIcon(sender);
+                    ImageIcon senderIcon = isMine ? myProfile.getIcon() : findUserIcon(sender);
+                    
+                    // 파일 기반 이미지 메시지 처리
+                    if (text.startsWith("@imagefile ")) {
+                        String fileName = text.substring(11).trim();
+                        File imageFile = new File("shared_images/" + fileName);
+                        
+                        if (imageFile.exists()) {
+                            try {
+                                ImageIcon img = new ImageIcon(imageFile.getAbsolutePath());
+                                Image scaledImage = img.getImage().getScaledInstance(
+                                    300, 300, Image.SCALE_SMOOTH
+                                );
+                                ImageIcon scaledIcon = new ImageIcon(scaledImage);
+                                
+                                ChatMessage chatMsg = new ChatMessage(sender, "", isMine, senderIcon);
+                                chatMsg.setType(ChatMessage.MessageType.IMAGE);
+                                chatMsg.setImageIcon(scaledIcon);
+                                chatMsg.setFileName(fileName);
+                                
+                                room.getMessageLog().addElement(chatMsg);
+                                
+                                SwingUtilities.invokeLater(() -> {
+                                    if (openedRoomFrames.containsKey(rId)) {
+                                        openedRoomFrames.get(rId).appendMessage(chatMsg);
+                                    } else {
+                                        homePanel.appendMessageToRoom(rId, chatMsg);
+                                    }
+                                });
+                                
+                                continue;
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        } else {
+                            System.out.println("이미지 파일을 찾을 수 없음: " + fileName);
+                        }
                     }
-
-                    // ✅ GAME_STARTED 메시지 처리 (버튼 비활성화용)
+                    
+                    // GAME_STARTED 메시지 처리 (버튼 비활성화용)
                     if (text.startsWith("GAME_STARTED:")) {
                         ChatMessage chatMsg = new ChatMessage(sender, text, false, senderIcon);
                         room.getMessageLog().addElement(chatMsg);
@@ -251,6 +330,77 @@ public class ChatClientMain extends JFrame {
                             openedRoomFrames.get(rId).appendMessage(chatMsg);
                         } else {
                             homePanel.appendMessageToRoom(rId, chatMsg);
+                        }
+                    });
+                }
+                
+                else if (msg.startsWith("/profile_saved ")) {
+                    String[] parts = msg.split(" ", 3);
+                    String imageType = parts[1];
+                    String savedFileName = parts[2];
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        if (imageType.equals("icon")) {
+                            ImageIcon icon = new ImageIcon("profile_images/" + savedFileName);
+                            myProfile.setIcon(icon);
+                        } else if (imageType.equals("background")) {
+                            ImageIcon bg = new ImageIcon("profile_images/" + savedFileName);
+                            myProfile.setBackgroundImage(bg);
+                        }
+                        homePanel.refreshProfile();
+                    });
+                }
+
+                // 다른 사용자 프로필 업데이트
+                else if (msg.startsWith("/profile_updated ")) {
+                    String[] parts = msg.split(" ", 4);
+                    String username = parts[1];
+                    String imageType = parts[2];
+                    String fileName = parts[3];
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        for (int i = 0; i < userListModel.getSize(); i++) {
+                            UserProfile user = userListModel.getElementAt(i);
+                            if (user.getUsername().equals(username)) {
+                                if (imageType.equals("icon")) {
+                                    File imgFile = new File("profile_images/" + fileName);
+                                    if (imgFile.exists()) {
+                                        user.setIcon(new ImageIcon(imgFile.getAbsolutePath()));
+                                    }
+                                } else if (imageType.equals("background")) {
+                                    File imgFile = new File("profile_images/" + fileName);
+                                    if (imgFile.exists()) {
+                                        user.setBackgroundImage(new ImageIcon(imgFile.getAbsolutePath()));
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                        homePanel.refreshProfile();
+                    });
+                }
+                
+                // 프로필 데이터 수신
+                else if (msg.startsWith("/profile_data ")) {
+                    String[] parts = msg.split(" ", 4);
+                    String username = parts[1];
+                    String imageType = parts[2];
+                    String fileName = parts[3];
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        for (int i = 0; i < userListModel.getSize(); i++) {
+                            UserProfile user = userListModel.getElementAt(i);
+                            if (user.getUsername().equals(username)) {
+                                File imgFile = new File("profile_images/" + fileName);
+                                if (imgFile.exists()) {
+                                    if (imageType.equals("icon")) {
+                                        user.setIcon(new ImageIcon(imgFile.getAbsolutePath()));
+                                    } else {
+                                        user.setBackgroundImage(new ImageIcon(imgFile.getAbsolutePath()));
+                                    }
+                                }
+                                break;
+                            }
                         }
                     });
                 }

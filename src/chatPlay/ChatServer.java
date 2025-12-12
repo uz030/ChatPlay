@@ -14,7 +14,9 @@ import game.GameType;
 import game.MessageBroadcaster;
 
 public class ChatServer extends JFrame {
-
+	private static final String IMAGE_FOLDER = "shared_images/";
+	private static final String PROFILE_FOLDER = "profile_images/";
+	
     private static final long serialVersionUID = 1L;
     private JPanel contentPane;
     JTextArea textArea;
@@ -65,6 +67,16 @@ public class ChatServer extends JFrame {
         txtPortNumber.setText("30000");
         txtPortNumber.setBounds(111, 264, 199, 26);
         contentPane.add(txtPortNumber);
+        
+        File imageDir = new File(IMAGE_FOLDER);
+        if (!imageDir.exists()) {
+            imageDir.mkdirs();
+        }
+        
+        File profileDir = new File(PROFILE_FOLDER);
+        if (!profileDir.exists()) {
+            profileDir.mkdirs();
+        }
 
         JButton btnServerStart = new JButton("Server Start");
         btnServerStart.addActionListener(e -> {
@@ -323,11 +335,99 @@ public class ChatServer extends JFrame {
 
                                 server.sendMsgToRoom(rId, userName, content);
 
-                                if (content.equals("@채팅봇")) {
-                                    server.sendMsgToRoom(rId, "ChatBot", "BOT_MENU:뉴스,날씨,게임");
+                               if (content.equals("@채팅봇")) {
+                            	   server.sendMsgToRoom(rId, "ChatBot", "BOT_MENU:뉴스,날씨,게임");
+                                    
+                               	}
+                            }
+                            break;
+                            
+                        case "/upload_image": {
+                            if (args.length >= 3) {
+                                int roomId = Integer.parseInt(args[1]);
+                                String fileName = args[2];
+                                
+                                try {
+                                    // 파일 크기 읽기
+                                    int fileSize = dis.readInt();
+                                    
+                                    // 파일 데이터 읽기
+                                    byte[] fileData = new byte[fileSize];
+                                    dis.readFully(fileData);
+                                    
+                                    // 서버의 shared_images 폴더에 저장
+                                    File destFile = new File(IMAGE_FOLDER + fileName);
+                                    java.nio.file.Files.write(destFile.toPath(), fileData);
+                                    
+                                    AppendText("이미지 저장: " + fileName + " (" + fileSize + " bytes)");
+                                    
+                                    // 방 참여자들에게 파일명만 브로드캐스트
+                                    server.sendMsgToRoom(roomId, userName, "@imagefile " + fileName);
+                                    
+                                } catch (Exception ex) {
+                                    ex.printStackTrace();
+                                    AppendText("이미지 저장 실패: " + ex.getMessage());
                                 }
                             }
                             break;
+                        }
+                        
+                        case "/upload_profile": {
+                            if (args.length >= 3) {
+                                String imageType = args[1]; // "icon" 또는 "background"
+                                String fileName = args[2];
+                                
+                                try {
+                                    // 파일 크기 읽기
+                                    int fileSize = dis.readInt();
+                                    
+                                    // 파일 데이터 읽기
+                                    byte[] fileData = new byte[fileSize];
+                                    dis.readFully(fileData);
+                                    
+                                    // profile_images 폴더에 저장
+                                    // 형식: username_icon.png 또는 username_background.png
+                                    String savedFileName = userName + "_" + imageType + "_" + fileName;
+                                    File destFile = new File(PROFILE_FOLDER + savedFileName);
+                                    java.nio.file.Files.write(destFile.toPath(), fileData);
+                                    
+                                    AppendText("프로필 이미지 저장: " + savedFileName + " (" + fileSize + " bytes)");
+                                    
+                                    // 저장된 파일명을 클라이언트에게 회신
+                                    WriteOne("/profile_saved " + imageType + " " + savedFileName);
+                                    
+                                    // 모든 사용자에게 프로필 변경 알림 브로드캐스트
+                                    server.WriteAll("/profile_updated " + userName + " " + imageType + " " + savedFileName);
+                                    
+                                } catch (Exception ex) {
+                                    ex.printStackTrace();
+                                    AppendText("프로필 이미지 저장 실패: " + ex.getMessage());
+                                }
+                            }
+                            break;
+                        }
+
+                        case "/request_profile": {
+                            // 특정 사용자의 프로필 이미지 요청
+                            if (args.length >= 2) {
+                                String targetUser = args[1];
+                                
+                                // profile_images 폴더에서 해당 사용자의 이미지 찾기
+                                File profileDir = new File(PROFILE_FOLDER);
+                                File[] files = profileDir.listFiles((dir, name) -> 
+                                    name.startsWith(targetUser + "_")
+                                );
+                                
+                                if (files != null) {
+                                    for (File f : files) {
+                                        String fileName = f.getName();
+                                        String imageType = fileName.contains("_icon_") ? "icon" : "background";
+                                        WriteOne("/profile_data " + targetUser + " " + imageType + " " + fileName);
+                                    }
+                                }
+                            }
+                            break;
+                        }
                             
                         case "/bot":
                             if (args.length >= 3) {
