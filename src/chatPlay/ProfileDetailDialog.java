@@ -54,7 +54,12 @@ public class ProfileDetailDialog extends JDialog {
             btnSave.setBounds(110, 150, 100, 30);
 
             btnSave.addActionListener(e -> {
-                profile.setStatusMessage(statusField.getText());
+                String newStatus = statusField.getText();
+                profile.setStatusMessage(newStatus);
+                
+                // 서버에 상태메시지 업데이트 전송
+                updateStatusToServer(newStatus);
+                
                 dispose();
             });
 
@@ -106,6 +111,15 @@ public class ProfileDetailDialog extends JDialog {
         if (owner instanceof ChatClientMain) {
             ChatClientMain parent = (ChatClientMain) owner;
             parent.uploadProfileImage(imageType, icon);
+        }
+    }
+    
+    private void updateStatusToServer(String statusMessage) {
+        // owner가 ChatClientMain인지 확인
+        Frame owner = (Frame) getOwner();
+        if (owner instanceof ChatClientMain) {
+            ChatClientMain parent = (ChatClientMain) owner;
+            parent.updateStatusMessage(statusMessage);
         }
     }
 

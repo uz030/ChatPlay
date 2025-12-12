@@ -428,6 +428,26 @@ public class ChatServer extends JFrame {
                             }
                             break;
                         }
+                        
+                        case "/update_status": {
+                            // 상태메시지 업데이트 처리
+                            if (args.length >= 2) {
+                                try {
+                                    // URL 디코딩
+                                    String statusMessage = java.net.URLDecoder.decode(args[1], "UTF-8");
+                                    
+                                    // 모든 사용자에게 상태메시지 변경 알림 브로드캐스트
+                                    server.WriteAll("/status_updated " + userName + " " + 
+                                        java.net.URLEncoder.encode(statusMessage, "UTF-8"));
+                                    
+                                    AppendText("상태메시지 업데이트: " + userName + " - " + statusMessage);
+                                } catch (Exception ex) {
+                                    ex.printStackTrace();
+                                    AppendText("상태메시지 업데이트 실패: " + ex.getMessage());
+                                }
+                            }
+                            break;
+                        }
                             
                         case "/bot":
                             if (args.length >= 3) {

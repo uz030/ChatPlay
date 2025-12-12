@@ -143,6 +143,17 @@ public class ChatClientMain extends JFrame {
         }
     }
     
+    public void updateStatusMessage(String statusMessage) {
+        try {
+            // 상태메시지를 URL 인코딩하여 전송 (공백 등 특수문자 처리)
+            String encodedStatus = java.net.URLEncoder.encode(statusMessage, "UTF-8");
+            dos.writeUTF("/update_status " + encodedStatus);
+            dos.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
     private void listenToServer() {
         try {
             while (true) {
@@ -402,7 +413,42 @@ public class ChatClientMain extends JFrame {
                                 break;
                             }
                         }
+                        // UI 갱신
+                        homePanel.refreshProfile();
                     });
+                }
+                
+                // 다른 사용자의 상태메시지 업데이트 수신
+                else if (msg.startsWith("/status_updated ")) {
+                    String[] parts = msg.split(" ", 3);
+                    if (parts.length >= 3) {
+                        String username = parts[1];
+                        try {
+                            // URL 디코딩
+                            String statusMessage = java.net.URLDecoder.decode(parts[2], "UTF-8");
+                            
+                            SwingUtilities.invokeLater(() -> {
+                                // 내 프로필이면 업데이트
+                                if (username.equals(myProfile.getUsername())) {
+                                    myProfile.setStatusMessage(statusMessage);
+                                }
+                                
+                                // 친구 목록에서 해당 사용자 찾아서 업데이트
+                                for (int i = 0; i < userListModel.getSize(); i++) {
+                                    UserProfile user = userListModel.getElementAt(i);
+                                    if (user.getUsername().equals(username)) {
+                                        user.setStatusMessage(statusMessage);
+                                        break;
+                                    }
+                                }
+                                
+                                // UI 갱신
+                                homePanel.refreshProfile();
+                            });
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
                 
                 // --- 참여자 목록 확인 결과 (UserListDialog 호출) ---
