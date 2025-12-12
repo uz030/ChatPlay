@@ -6,6 +6,10 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+/**
+ * 프로필 상세 정보를 보여주고 수정할 수 있는 다이얼로그
+ * 내 프로필인 경우 상태메시지와 이미지 수정 가능
+ */
 public class ProfileDetailDialog extends JDialog {
 
     private static final long serialVersionUID = 1L;
@@ -13,6 +17,12 @@ public class ProfileDetailDialog extends JDialog {
     private JLabel bgLabel, imgLabel;
     private JTextField statusField;
 
+    /**
+     * 프로필 상세 다이얼로그 생성
+     * @param owner 부모 프레임
+     * @param profile 표시할 프로필 정보
+     * @param isMe 내 프로필 여부 (true면 수정 가능)
+     */
     public ProfileDetailDialog(Frame owner, UserProfile profile, boolean isMe) {
         super(owner, "프로필", true);
         this.profile = profile;
@@ -55,9 +65,10 @@ public class ProfileDetailDialog extends JDialog {
 
             btnSave.addActionListener(e -> {
                 String newStatus = statusField.getText();
+                // 1. 로컬 프로필 객체에 상태메시지 저장
                 profile.setStatusMessage(newStatus);
                 
-                // 서버에 상태메시지 업데이트 전송
+                // 2. 서버로 상태메시지 변경 전송 (다른 사용자에게 동기화)
                 updateStatusToServer(newStatus);
                 
                 dispose();
@@ -81,6 +92,10 @@ public class ProfileDetailDialog extends JDialog {
         }
     }
 
+    /**
+     * 프로필 이미지 또는 배경 이미지 변경
+     * @param isBg true면 배경 이미지, false면 프로필 이미지
+     */
     private void changeImage(boolean isBg) {
         JFileChooser ch = new JFileChooser();
         ch.setFileFilter(new FileNameExtensionFilter("Images", "png", "jpg", "jpeg"));
@@ -91,22 +106,21 @@ public class ProfileDetailDialog extends JDialog {
             if (isBg) {
                 profile.setBackgroundImage(icon);
                 bgLabel.setIcon(getScaledIcon(icon, 320, 220));
-                
-                // ✅ 서버에 배경 이미지 업로드
                 uploadToServer("background", icon);
-                
             } else {
                 profile.setIcon(icon);
                 imgLabel.setIcon(getScaledIcon(icon, 80, 80));
-                
-                // ✅ 서버에 프로필 이미지 업로드
                 uploadToServer("icon", icon);
             }
         }
     }
     
+    /**
+     * 프로필 이미지를 서버로 업로드
+     * @param imageType "icon" 또는 "background"
+     * @param icon 업로드할 이미지
+     */
     private void uploadToServer(String imageType, ImageIcon icon) {
-        // owner가 ChatClientMain인지 확인
         Frame owner = (Frame) getOwner();
         if (owner instanceof ChatClientMain) {
             ChatClientMain parent = (ChatClientMain) owner;
@@ -114,8 +128,12 @@ public class ProfileDetailDialog extends JDialog {
         }
     }
     
+    /**
+     * 상태메시지 변경을 서버로 전송
+     * 서버에서 모든 클라이언트에게 브로드캐스트하여 동기화
+     * @param statusMessage 변경할 상태메시지
+     */
     private void updateStatusToServer(String statusMessage) {
-        // owner가 ChatClientMain인지 확인
         Frame owner = (Frame) getOwner();
         if (owner instanceof ChatClientMain) {
             ChatClientMain parent = (ChatClientMain) owner;
@@ -124,6 +142,13 @@ public class ProfileDetailDialog extends JDialog {
     }
 
 
+    /**
+     * 이미지 크기 조절 헬퍼 메서드
+     * @param src 원본 이미지
+     * @param w 목표 너비
+     * @param h 목표 높이
+     * @return 크기 조절된 이미지 아이콘
+     */
     private ImageIcon getScaledIcon(ImageIcon src, int w, int h) {
         if (src == null) return null;
         return new ImageIcon(src.getImage().getScaledInstance(w, h, Image.SCALE_SMOOTH));

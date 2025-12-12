@@ -5,10 +5,18 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+/**
+ * 프로필 화면 패널
+ * 내 프로필과 친구 목록을 표시하며, 상태메시지 변경 시 자동 갱신됨
+ */
 public class ProfilePanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * 프로필 패널 생성
+     * @param parent ChatClientMain 부모 프레임
+     */
     public ProfilePanel(ChatClientMain parent) {
         setLayout(new BorderLayout());
         setOpaque(false);
@@ -20,27 +28,30 @@ public class ProfilePanel extends JPanel {
         profileBox.setBorder(BorderFactory.createEmptyBorder(30, 0, 30, 0));
         profileBox.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
+        // 내 프로필 클릭 시 수정 다이얼로그 열기
         profileBox.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
-                // 내 프로필 수정 팝업 열기
-                new ProfileDetailDialog(parent, myProfile, true).setVisible(true);
-                // 팝업 닫힌 후 화면 갱신 (변경된 정보 반영)
+                ProfileDetailDialog dialog = new ProfileDetailDialog(parent, myProfile, true);
+                dialog.setVisible(true);
+                // 다이얼로그 닫힌 후 변경된 정보 반영을 위해 패널 재생성
                 removeAll();
                 add(new ProfilePanel(parent));
                 revalidate();
             }
         });
 
-        // 내 사진
+        // 내 프로필 사진
         JLabel imgLabel = new JLabel(getScaledIcon(myProfile.getIcon(), 60, 60));
         
         // 이름과 상태메시지를 수직으로 배치하기 위한 패널
         JPanel myInfoPanel = new JPanel(new GridLayout(2, 1));
         myInfoPanel.setOpaque(false);
         
+        // 사용자명 표시
         JLabel nameLabel = new JLabel(myProfile.getUsername());
         nameLabel.setFont(new Font("맑은 고딕", Font.BOLD, 16));
         
+        // 상태메시지 표시 (null 체크 후 빈 문자열로 처리)
         String myStatus = myProfile.getStatusMessage();
         if (myStatus == null) myStatus = "";
         JLabel statusLabel = new JLabel(myStatus);
@@ -83,10 +94,15 @@ public class ProfilePanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
     }
 
-    // 이미지 크기 조절 헬퍼 
+    /**
+     * 이미지 크기 조절 헬퍼 메서드
+     * @param src 원본 이미지 아이콘
+     * @param w 목표 너비
+     * @param h 목표 높이
+     * @return 크기 조절된 이미지 아이콘
+     */
     private ImageIcon getScaledIcon(ImageIcon src, int w, int h) {
         if (src == null) {
-            // 이미지가 없으면 빈 아이콘 반환 (또는 기본 이미지 로드)
             return new ImageIcon(); 
         }
         return new ImageIcon(src.getImage().getScaledInstance(w, h, Image.SCALE_SMOOTH));
@@ -101,7 +117,10 @@ public class ProfilePanel extends JPanel {
         g2.fillRect(0, 0, getWidth(), getHeight());
     }
 
-    // 친구 목록의 각 항목(프로필 사진 + 이름 + 상태)을 그리는 렌더러
+    /**
+     * 친구 목록의 각 항목을 렌더링하는 커스텀 셀 렌더러
+     * 프로필 사진, 이름, 상태메시지를 표시
+     */
     class ProfileListRenderer extends JPanel implements ListCellRenderer<UserProfile> {
 
 		private static final long serialVersionUID = 1L;
@@ -136,31 +155,23 @@ public class ProfilePanel extends JPanel {
 
         @Override
         public Component getListCellRendererComponent(JList<? extends UserProfile> list, UserProfile value, int index, boolean isSelected, boolean cellHasFocus) {
-            // 1. 프로필 사진 설정
+            // 1. 프로필 사진 설정 (없으면 기본 이미지 사용)
             ImageIcon icon = value.getIcon();
-            // 이미지가 없으면 기본 이미지 로드 시도
             if (icon == null) {
                 try {
                     icon = new ImageIcon(getClass().getResource("/images/basic_profile.png"));
                 } catch (Exception e) {
-                    // 로드 실패 시 빈 아이콘 유지
+                    // 기본 이미지 로드 실패 시 빈 아이콘 유지
                 }
             }
-            
-            if (icon != null) {
-                iconLabel.setIcon(getScaledIcon(icon, 45, 45)); 
-            } else {
-                iconLabel.setIcon(null);
-            }
+            iconLabel.setIcon(icon != null ? getScaledIcon(icon, 45, 45) : null);
 
-            // 2. 텍스트 설정
+            // 2. 사용자명과 상태메시지 설정
             nameLabel.setText(value.getUsername());
-            
             String status = value.getStatusMessage();
-            if (status == null || status.isEmpty()) status = " "; 
-            statusLabel.setText(status);
+            statusLabel.setText((status == null || status.isEmpty()) ? " " : status);
 
-            // 3. 선택 시 배경색 변경
+            // 3. 선택 상태에 따른 배경색 변경
             if (isSelected) {
                 setBackground(new Color(230, 240, 255)); 
                 setOpaque(true);

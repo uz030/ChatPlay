@@ -4,6 +4,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.net.URL; 
 
+/**
+ * 채팅 홈 화면 패널
+ * 프로필, 채팅 목록 등을 관리하는 메인 컨테이너
+ */
 public class ChatHome extends JPanel {
 
     private static final long serialVersionUID = 1L;
@@ -53,6 +57,10 @@ public class ChatHome extends JPanel {
         refresh();
     }
 
+    /**
+     * 프로필 패널 표시
+     * 상태메시지 변경 등 프로필 정보가 업데이트될 때 호출됨
+     */
     public void showProfilePanel() {
         centerPanel.removeAll();
         centerPanel.add(new ProfilePanel(parentFrame), BorderLayout.CENTER);
@@ -76,8 +84,11 @@ public class ChatHome extends JPanel {
         centerPanel.repaint();
     }
     
+    /**
+     * 프로필 패널 갱신
+     * 상태메시지나 프로필 이미지 변경 시 호출되어 최신 정보 반영
+     */
     public void refreshProfile() {
-        // ProfilePanel 갱신
         showProfilePanel();
     }
 

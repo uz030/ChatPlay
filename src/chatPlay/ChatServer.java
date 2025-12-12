@@ -217,7 +217,7 @@ public class ChatServer extends JFrame {
             }
         }
 
-        /** 클라이언트 연결 종료 */
+        // 클라이언트 연결 종료
         private void removeClient() {
 
             server.UserVec.remove(this);
@@ -429,14 +429,18 @@ public class ChatServer extends JFrame {
                             break;
                         }
                         
+                        /**
+                         * 상태메시지 업데이트 요청 처리
+                         * 클라이언트로부터 받은 상태메시지 변경을 모든 클라이언트에게 브로드캐스트
+                         */
                         case "/update_status": {
-                            // 상태메시지 업데이트 처리
                             if (args.length >= 2) {
                                 try {
-                                    // URL 디코딩
+                                    // URL 디코딩하여 원본 상태메시지 복원
                                     String statusMessage = java.net.URLDecoder.decode(args[1], "UTF-8");
                                     
-                                    // 모든 사용자에게 상태메시지 변경 알림 브로드캐스트
+                                    // 모든 연결된 클라이언트에게 상태메시지 변경 알림 브로드캐스트
+                                    // 형식: /status_updated [사용자명] [인코딩된 상태메시지]
                                     server.WriteAll("/status_updated " + userName + " " + 
                                         java.net.URLEncoder.encode(statusMessage, "UTF-8"));
                                     

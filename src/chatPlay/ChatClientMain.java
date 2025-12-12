@@ -143,6 +143,11 @@ public class ChatClientMain extends JFrame {
         }
     }
     
+    /**
+     * 상태메시지 변경을 서버로 전송
+     * 서버에서 모든 클라이언트에게 브로드캐스트하여 동기화
+     * @param statusMessage 변경할 상태메시지
+     */
     public void updateStatusMessage(String statusMessage) {
         try {
             // 상태메시지를 URL 인코딩하여 전송 (공백 등 특수문자 처리)
@@ -154,14 +159,19 @@ public class ChatClientMain extends JFrame {
         }
     }
     
+    /**
+     * 서버로부터 메시지를 수신하는 스레드
+     * 다양한 프로토콜 메시지를 처리하여 UI 업데이트
+     */
     private void listenToServer() {
         try {
             while (true) {
                 String msg = dis.readUTF();
                 System.out.println("Server: " + msg);
                 
+                // 게임 메시지는 GameMessageHandler에서 처리
                 if (gameMessageHandler.handleMessage(msg)) {
-                    continue; // 게임 메시지면 처리 완료
+                    continue;
                 }
 
                 // --- 유저 목록 갱신 ---
@@ -418,22 +428,25 @@ public class ChatClientMain extends JFrame {
                     });
                 }
                 
-                // 다른 사용자의 상태메시지 업데이트 수신
+                /**
+                 * 다른 사용자의 상태메시지 업데이트 수신
+                 * 서버에서 브로드캐스트된 상태메시지 변경을 받아 로컬 프로필과 UI 업데이트
+                 */
                 else if (msg.startsWith("/status_updated ")) {
                     String[] parts = msg.split(" ", 3);
                     if (parts.length >= 3) {
                         String username = parts[1];
                         try {
-                            // URL 디코딩
+                            // URL 디코딩하여 원본 상태메시지 복원
                             String statusMessage = java.net.URLDecoder.decode(parts[2], "UTF-8");
                             
                             SwingUtilities.invokeLater(() -> {
-                                // 내 프로필이면 업데이트
+                                // 내 프로필이면 내 프로필 객체도 업데이트
                                 if (username.equals(myProfile.getUsername())) {
                                     myProfile.setStatusMessage(statusMessage);
                                 }
                                 
-                                // 친구 목록에서 해당 사용자 찾아서 업데이트
+                                // 친구 목록에서 해당 사용자 찾아서 상태메시지 업데이트
                                 for (int i = 0; i < userListModel.getSize(); i++) {
                                     UserProfile user = userListModel.getElementAt(i);
                                     if (user.getUsername().equals(username)) {
@@ -442,7 +455,7 @@ public class ChatClientMain extends JFrame {
                                     }
                                 }
                                 
-                                // UI 갱신
+                                // 프로필 패널 UI 갱신 (상태메시지 변경 반영)
                                 homePanel.refreshProfile();
                             });
                         } catch (Exception e) {
