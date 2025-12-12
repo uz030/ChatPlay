@@ -18,8 +18,6 @@ public class GameMessageHandler {
     
     /**
      * 게임 관련 메시지 처리
-     * @param msg 서버로부터 받은 메시지
-     * @return 처리했으면 true, 아니면 false
      */
     public boolean handleMessage(String msg) {
         
@@ -27,7 +25,7 @@ public class GameMessageHandler {
         if (msg.startsWith("/game_participants ")) {
             String[] parts = msg.split(" ", 4);
             int roomId = Integer.parseInt(parts[1]);
-            String gameType = parts[2]; // "yacht" or "catchmind"
+            String gameType = parts[2];
             String[] participantNames = parts[3].split(",");
             
             List<String> participants = new ArrayList<>();
@@ -73,7 +71,7 @@ public class GameMessageHandler {
             return true;
         }
         
-        // === 게임 채팅 메시지 (정답 시도) ===
+        // === 게임 채팅 메시지 ===
         else if (msg.startsWith("/game_chat ")) {
             String[] parts = msg.split(" ", 4);
             int roomId = Integer.parseInt(parts[1]);
@@ -83,7 +81,6 @@ public class GameMessageHandler {
             SwingUtilities.invokeLater(() -> {
                 CatchMindFrame frame = gameFrames.get(roomId);
                 if (frame != null) {
-                    // 내가 보낸 메시지는 [나]로 표시
                     if (sender.equals(client.getMyProfile().getUsername())) {
                         frame.appendChat("[나] " + message);
                     } else {
@@ -94,23 +91,69 @@ public class GameMessageHandler {
             return true;
         }
         
-        // === 정답 맞춤 알림 ===
-        else if (msg.startsWith("/correct_answer ")) {
-            String[] parts = msg.split(" ", 4);
+        // ========== [FIX 1] 타이머 시작 ==========
+        else if (msg.startsWith("/start_timer ")) {
+            String[] parts = msg.split(" ");
             int roomId = Integer.parseInt(parts[1]);
-            String userName = parts[2];
-            String word = parts[3];
             
             SwingUtilities.invokeLater(() -> {
                 CatchMindFrame frame = gameFrames.get(roomId);
                 if (frame != null) {
-                    frame.onCorrectAnswer(userName, word);
+                    frame.startTimer();
                 }
             });
             return true;
         }
         
-        // === 그림 그리기 데이터 ===
+        // ========== [FIX 2] 정답 공개 ==========
+        else if (msg.startsWith("/reveal_answer ")) {
+            String[] parts = msg.split(" ", 3);
+            int roomId = Integer.parseInt(parts[1]);
+            String word = parts[2];
+            
+            SwingUtilities.invokeLater(() -> {
+                CatchMindFrame frame = gameFrames.get(roomId);
+                if (frame != null) {
+                    frame.revealAnswer(word); // ✅ setWord → revealAnswer
+                }
+            });
+            return true;
+        }
+        
+        // ========== [FIX 3] 정답 맞춤 처리 ==========
+        else if (msg.startsWith("/correct_answer ")) {
+            String[] parts = msg.split(" ", 5);
+            int roomId = Integer.parseInt(parts[1]);
+            String userName = parts[2];
+            String word = parts[3];
+            int score = Integer.parseInt(parts[4]);
+            
+            SwingUtilities.invokeLater(() -> {
+                CatchMindFrame frame = gameFrames.get(roomId);
+                if (frame != null) {
+                    frame.onCorrectAnswer(userName, score);
+                }
+            });
+            return true;
+        }
+        
+        // === 점수 업데이트 ===
+        else if (msg.startsWith("/score_update ")) {
+            String[] parts = msg.split(" ");
+            int roomId = Integer.parseInt(parts[1]);
+            String userName = parts[2];
+            int newScore = Integer.parseInt(parts[3]);
+            
+            SwingUtilities.invokeLater(() -> {
+                CatchMindFrame frame = gameFrames.get(roomId);
+                if (frame != null) {
+                    frame.updateScore(userName, newScore);
+                }
+            });
+            return true;
+        }
+        
+        // === 그림 그리기 ===
         else if (msg.startsWith("/draw ")) {
             String[] parts = msg.split(" ");
             if (parts.length >= 10) {
@@ -149,30 +192,21 @@ public class GameMessageHandler {
             return true;
         }
         
-        // === 요트다이스 게임 시작 ===
-        else if (msg.startsWith("/yacht_start ")) {
-            // 게임 시작 신호 (이미 프레임은 생성되었으므로 추가 처리 불필요)
-            // 상태 업데이트는 /yacht_update로 따로 전송됨
-            return true;
-        }
-        
-        // === 요트다이스 게임 상태 업데이트 ===
+        // === 요트다이스 상태 업데이트 ===
         else if (msg.startsWith("/yacht_update ")) {
             String[] parts = msg.split(" ", 3);
-            if (parts.length >= 3) {
-                int roomId = Integer.parseInt(parts[1]);
-                String stateData = parts[2];
-                
-                SwingUtilities.invokeLater(() -> {
-                    YachtFrame.updateGameInstance(roomId, stateData);
-                });
-            }
+            int roomId = Integer.parseInt(parts[1]);
+            String stateData = parts[2];
+            
+            SwingUtilities.invokeLater(() -> {
+                YachtFrame.updateGameInstance(roomId, stateData);
+            });
             return true;
         }
         
         // === 게임 종료 ===
         else if (msg.startsWith("/game_ended ")) {
-            String[] parts = msg.split(" ", 3);
+            String[] parts = msg.split(" ", 4);
             int roomId = Integer.parseInt(parts[1]);
             String winner = parts.length > 2 ? parts[2] : "게임 종료";
             
