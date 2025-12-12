@@ -5,7 +5,10 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
 
-
+/**
+ * 채팅방 패널
+ * 메시지 송수신, 파일 전송, 게임 참여 UI 제공
+ */
 public class ChatRoomPanel extends JPanel {
 
 	private static final long serialVersionUID = 1L;
@@ -15,20 +18,27 @@ public class ChatRoomPanel extends JPanel {
     private JScrollPane scrollPane;
     private JTextField inputField;
     
+    // 이모지 패널 관리
     private JLayeredPane layeredChatPanel;
     private Emoji emoji;
     private boolean emojiOpen = false;
     
+    /**
+     * 채팅방 패널 생성자
+     * @param parent 부모 클라이언트 프레임
+     * @param roomData 채팅방 데이터
+     */
     public ChatRoomPanel(ChatClientMain parent, ChatRoomData roomData) {
         this.parent = parent;
         this.roomData = roomData;
         setLayout(new BorderLayout());
 
-        // 1. 상단 (뒤로가기, 제목, 초대)
+        // 1. 상단 헤더 (뒤로가기, 제목, 참여자 목록)
         JPanel top = new JPanel(new BorderLayout());
         top.setBackground(Color.WHITE);
         top.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230,230,230)));
 
+        // 뒤로가기 버튼
         JButton btnBack = new JButton(" < ");
         btnBack.setContentAreaFilled(false);
         btnBack.setBorderPainted(false);
@@ -37,9 +47,11 @@ public class ChatRoomPanel extends JPanel {
             if (w != null) w.dispose();
         });
 
+        // 방 제목
         JLabel title = new JLabel(roomData.getRoomName(), SwingConstants.CENTER);
         title.setFont(new Font("맑은 고딕", Font.BOLD, 16));
     
+        // 참여자 목록 버튼
         JButton btnUsers = new JButton("👥");
         btnUsers.setContentAreaFilled(false);
         btnUsers.setBorderPainted(false);
@@ -60,11 +72,12 @@ public class ChatRoomPanel extends JPanel {
         
         add(top, BorderLayout.NORTH);
 
-        // 2. 중앙 채팅 영역 - JLayeredPane 사용
+        // 2. 중앙 채팅 영역 - JLayeredPane 사용 (이모지 패널 오버레이용)
         chatContentPanel = new JPanel();
         chatContentPanel.setLayout(new BoxLayout(chatContentPanel, BoxLayout.Y_AXIS));
         chatContentPanel.setBackground(Color.WHITE);
 
+        // 기존 메시지 로그 표시
         DefaultListModel<ChatMessage> logs = roomData.getMessageLog();
         for(int i=0; i<logs.getSize(); i++) {
             addBubble(logs.getElementAt(i));
@@ -93,13 +106,13 @@ public class ChatRoomPanel extends JPanel {
         });
 
 
-        // 3. 하단 입력창
+        // 3. 하단 입력 영역
         JPanel bottom = new JPanel();
         bottom.setBackground(Color.WHITE);
         bottom.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         bottom.setLayout(new BoxLayout(bottom, BoxLayout.X_AXIS));
 
-        /* ─────────────── 파일 버튼 ─────────────── */
+        // 파일 전송 버튼
         JButton btnFile = new JButton(new ImageIcon("src/images/file.png"));
         btnFile.setBorderPainted(false);
         btnFile.setContentAreaFilled(false);
@@ -130,13 +143,13 @@ public class ChatRoomPanel extends JPanel {
             }
             
             try {
-                // ✅ 고유한 파일명 생성 (시간 + 원본파일명)
+                // 고유한 파일명 생성 (시간 + 원본파일명)
                 String uniqueFileName = System.currentTimeMillis() + "_" + file.getName();
                 
-                // ✅ 파일 전송 (파일 데이터 + 메타정보)
+                // 파일 데이터 읽기
                 byte[] fileData = java.nio.file.Files.readAllBytes(file.toPath());
                 
-                // 서버로 파일 업로드 명령
+                // 서버로 파일 업로드
                 parent.getDos().writeUTF("/upload_image " + roomData.getRoomId() + " " + uniqueFileName);
                 parent.getDos().writeInt(fileData.length);
                 parent.getDos().write(fileData);
@@ -156,7 +169,8 @@ public class ChatRoomPanel extends JPanel {
 
         bottom.add(filePanel);
         bottom.add(Box.createHorizontalStrut(8));
-        /* ─────────────── 입력 박스 ─────────────── */
+        
+        // 입력 박스
         JPanel inputBox = new JPanel(new BorderLayout());
         inputBox.setBackground(Color.WHITE);
         inputBox.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
@@ -207,8 +221,7 @@ public class ChatRoomPanel extends JPanel {
         inputBox.add(inputField, BorderLayout.CENTER);
         inputBox.add(btnEmoji, BorderLayout.EAST);
 
-
-        /* ─────────────── 전송 버튼 ─────────────── */
+        // 전송 버튼
         JButton btnSend = new RoundedButton("전송", new Color(0, 149, 246), new Color(0, 120, 200), Color.WHITE);
         btnSend.setPreferredSize(new Dimension(70, 40));
         btnSend.setFocusPainted(false);
@@ -227,21 +240,25 @@ public class ChatRoomPanel extends JPanel {
     }
     
     
+    /**
+     * 이모지 패널 위치 업데이트
+     * 화면 크기 변경 시 호출됨
+     */
     private void updateEmojiPanelLocation() {
         if (emoji == null) return;
         
         Dimension dlgSize = emoji.getPreferredSize();
-        
-       
         int targetX = layeredChatPanel.getWidth() - dlgSize.width - 10; 
-        
-      
         int targetY = layeredChatPanel.getHeight() - dlgSize.height; 
         
         emoji.setBounds(targetX, targetY, dlgSize.width, dlgSize.height);
     }
     
-
+    /**
+     * 채팅 메시지 버블 추가
+     * 이미지, 게임 참여 UI, 일반 텍스트 등 다양한 타입 처리
+     * @param msg 채팅 메시지
+     */
     public void addBubble(ChatMessage msg) {
         
     	if (msg.getContent().startsWith("@imagefile ")) {
@@ -338,7 +355,7 @@ public class ChatRoomPanel extends JPanel {
                 }
             });
             
-            // 게임 시작 버튼 (한 번만 누르면 모두에게 게임 창 열림)
+            // 게임 시작 버튼 (2명 이상 참여 시 시작 가능)
             JButton startBtn = new JButton("게임 시작 (2명 이상)");
             startBtn.setFont(new Font("맑은 고딕", Font.BOLD, 14));
             startBtn.setBackground(new Color(255, 100, 100));
@@ -354,7 +371,7 @@ public class ChatRoomPanel extends JPanel {
                     } else {
                         parent.getDos().writeUTF("/catchmind_start " + roomData.getRoomId());
                     }
-                    // ✅ 버튼 비활성화
+                    // 버튼 비활성화
                     startBtn.setEnabled(false);
                     joinBtn.setEnabled(false);
                     startBtn.setText("게임 시작됨");
@@ -402,7 +419,7 @@ public class ChatRoomPanel extends JPanel {
             return;
         }
         
-        // === 기존 버블 처리 (일반 메시지) ===
+        // 일반 텍스트 메시지 처리
         ChatBubblePanel bubble = new ChatBubblePanel(msg, e -> onBotMenuClicked(e));
 
         JPanel wrapper = new JPanel(new BorderLayout());
@@ -418,6 +435,9 @@ public class ChatRoomPanel extends JPanel {
         chatContentPanel.repaint();
         scrollToBottom();
     }
+    /**
+     * 채팅 영역을 맨 아래로 스크롤
+     */
     private void scrollToBottom() {
         SwingUtilities.invokeLater(() -> {
             JScrollBar bar = scrollPane.getVerticalScrollBar();
@@ -425,6 +445,10 @@ public class ChatRoomPanel extends JPanel {
         });
     }
 
+    /**
+     * 메시지 전송
+     * 입력창의 텍스트를 서버로 전송
+     */
     private void sendMsg() {
         String txt = inputField.getText().trim();
         if (txt.isEmpty()) return;
@@ -443,6 +467,9 @@ public class ChatRoomPanel extends JPanel {
 
 
 
+    /**
+     * 친구 초대 다이얼로그 열기
+     */
     private void inviteFriend() {
         Window owner = SwingUtilities.getWindowAncestor(this);
 
@@ -461,11 +488,17 @@ public class ChatRoomPanel extends JPanel {
         }
     }
 
-    
+    /**
+     * 초대 다이얼로그 열기 (외부 호출용)
+     */
     public void openInviteDialog() {
         inviteFriend();
     }
 
+    /**
+     * 챗봇 메뉴 버튼 클릭 처리
+     * 날씨, 뉴스, 게임 등 다양한 기능 호출
+     */
     private void onBotMenuClicked(ActionEvent e) {
         String menu = e.getActionCommand(); // 클릭된 버튼의 텍스트
         int roomId = roomData.getRoomId();
@@ -508,7 +541,6 @@ public class ChatRoomPanel extends JPanel {
                 parent.getDos().writeUTF("/bot game " + roomData.getRoomId());
             }
             else if (menu.equals("캐치마인드")) {
-                // 캐치마인드 실행 로직
                 parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 캐치마인드");
                 parent.getDos().writeUTF("/bot catchmind " + roomId);
             }
@@ -516,10 +548,8 @@ public class ChatRoomPanel extends JPanel {
             	parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 캐치마인드 참여하기");
             	parent.getDos().writeUTF("/catchmind_join " + roomId);
             	parent.openCatchMindFrame(roomId);
-                
             }
             else if (menu.equals("요트다이스")) {
-                // 요트다이스 실행 로직
                 parent.getDos().writeUTF("/roommsg " + roomData.getRoomId() + " 요트다이스");
                 parent.getDos().writeUTF("/bot yacht " + roomId);
             }
@@ -536,6 +566,9 @@ public class ChatRoomPanel extends JPanel {
         }
     }
 
+    /**
+     * 뉴스 카테고리인지 확인
+     */
     private boolean isNewsCategory(String menu) {
         String[] categories = {"속보", "정치", "경제", "사회", "세계", "IT/과학"};
         for (String c : categories) {
@@ -544,6 +577,9 @@ public class ChatRoomPanel extends JPanel {
         return false;
     }
     
+    /**
+     * 이모지 패널 닫기
+     */
     public void closeEmoji() {
         if (emoji != null && emoji.isVisible()) {
         	emoji.setVisible(false);
@@ -551,7 +587,9 @@ public class ChatRoomPanel extends JPanel {
         }
     }
 
-
+    /**
+     * 방 ID 조회
+     */
     public int getRoomId() { return roomData.getRoomId(); }
 
     

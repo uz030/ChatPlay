@@ -7,6 +7,10 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 
+/**
+ * 로그인 화면 패널
+ * 사용자명 입력 및 프로필 이미지 선택 기능 제공
+ */
 @SuppressWarnings("unused")
 public class MainPanel extends JPanel {
 
@@ -17,6 +21,10 @@ public class MainPanel extends JPanel {
     private ImageIcon selectedIcon;
     private ImageIcon defaultProfileIcon;
 
+    /**
+     * 로그인 패널 생성자
+     * @param parentFrame 부모 클라이언트 프레임
+     */
     public MainPanel(ChatClientMain parentFrame) {
         this.parentFrame = parentFrame;
         setLayout(null);
@@ -76,6 +84,7 @@ public class MainPanel extends JPanel {
         txtUserName.setBounds(120, 325, 150, 33);
         add(txtUserName);
 
+        // 서버 연결 버튼
         RoundedButton btnConnect = new RoundedButton("회원가입", new Color(200, 210, 255), new Color(170, 185, 255), new Color(40, 50, 80));
         btnConnect.setBounds(93, 380, 205, 50);
         btnConnect.addActionListener(e -> {
@@ -85,6 +94,13 @@ public class MainPanel extends JPanel {
         add(btnConnect);
     }
 
+    /**
+     * 이미지 크기 조절
+     * @param src 원본 이미지
+     * @param w 목표 너비
+     * @param h 목표 높이
+     * @return 크기 조절된 이미지
+     */
     private ImageIcon getScaledIcon(ImageIcon src, int w, int h) {
         if (src == null) return new ImageIcon();
         return new ImageIcon(src.getImage().getScaledInstance(w, h, Image.SCALE_SMOOTH));

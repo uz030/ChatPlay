@@ -11,15 +11,21 @@ import java.net.Socket;
 import java.util.*;
 import java.util.List; 
 
+/**
+ * 채팅 클라이언트 메인 프레임
+ * 서버 연결, 메시지 송수신, UI 관리, 게임 창 관리를 담당
+ */
 public class ChatClientMain extends JFrame {
 
     private static final long serialVersionUID = 1L;
+    
+    // UI 컴포넌트
     private CardLayout cardLayout;
     private JPanel mainContainer;
     private MainPanel mainPanel;
     private ChatHome homePanel;
 
-    // 네트워크
+    // 네트워크 연결
     private Socket socket;
     private DataInputStream dis;
     private DataOutputStream dos;
@@ -38,16 +44,24 @@ public class ChatClientMain extends JFrame {
     // 열린 게임창 관리
     private Map<Integer, CatchMindFrame> openedGameFrames = new HashMap<>();
     private Map<Integer, YachtFrame> openedYachtFrames = new HashMap<>();
+    
     // 게임 메시지 핸들러
     private GameMessageHandler gameMessageHandler;
 
     // 기본 프로필 이미지 
     private ImageIcon defaultProfileIcon;
 
+    /**
+     * 프로그램 진입점
+     */
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> new ChatClientMain().setVisible(true));
     }
 
+    /**
+     * 클라이언트 메인 프레임 생성자
+     * UI 초기화 및 데이터 모델 준비
+     */
     public ChatClientMain() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setTitle("ChatPlay");
@@ -55,17 +69,19 @@ public class ChatClientMain extends JFrame {
         setLocationRelativeTo(null);
         setResizable(false);
 
-        // 기본 이미지 로드
+        // 기본 프로필 이미지 로드
         try {
             defaultProfileIcon = new ImageIcon(getClass().getResource("/images/basic_profile.png"));
         } catch (Exception e) {
             defaultProfileIcon = new ImageIcon();
         }
 
+        // 데이터 모델 초기화
         userListModel = new DefaultListModel<>();
         roomListModel = new DefaultListModel<>();
         roomMap = new HashMap<>();
 
+        // 카드 레이아웃으로 화면 전환 관리
         cardLayout = new CardLayout();
         mainContainer = new JPanel(cardLayout);
         setContentPane(mainContainer);
@@ -78,25 +94,35 @@ public class ChatClientMain extends JFrame {
 
         cardLayout.show(mainContainer, "Main");
         
+        // 게임 메시지 핸들러 초기화
         gameMessageHandler = new GameMessageHandler(this, openedGameFrames);
     }
 
+    /**
+     * 서버에 연결하고 로그인
+     * @param username 사용자명
+     * @param icon 프로필 이미지
+     */
     public void connectToServer(String username, ImageIcon icon) {
         try {
+            // 서버 소켓 연결
             socket = new Socket(SERVER_IP, SERVER_PORT);
             dis = new DataInputStream(socket.getInputStream());
             dos = new DataOutputStream(socket.getOutputStream());
 
+            // 로그인 메시지 전송
             dos.writeUTF("/login " + username);
             dos.flush();
 
+            // 내 프로필 생성
             this.myProfile = new UserProfile(username, icon);
             
+            // 프로필 이미지가 있으면 서버에 업로드
             if (icon != null && icon.getImage() != null) {
                 uploadProfileImage("icon", icon);
             }
 
-
+            // 서버 메시지 수신 스레드 시작
             new Thread(this::listenToServer).start();
 
             // 홈 화면으로 전환 후 프로필 패널 표시
@@ -114,6 +140,11 @@ public class ChatClientMain extends JFrame {
         }
     }
 
+    /**
+     * 프로필 이미지를 서버에 업로드
+     * @param imageType "icon" 또는 "background"
+     * @param icon 업로드할 이미지
+     */
     public void uploadProfileImage(String imageType, ImageIcon icon) {
         try {
             // ImageIcon을 byte[]로 변환
@@ -126,13 +157,14 @@ public class ChatClientMain extends JFrame {
             icon.paintIcon(null, g, 0, 0);
             g.dispose();
             
-            // PNG로 저장
+            // PNG 형식으로 변환
             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
             javax.imageio.ImageIO.write(buffered, "png", baos);
             byte[] imageBytes = baos.toByteArray();
             
             String fileName = imageType + ".png";
             
+            // 서버로 이미지 전송
             dos.writeUTF("/upload_profile " + imageType + " " + fileName);
             dos.writeInt(imageBytes.length);
             dos.write(imageBytes);
@@ -174,7 +206,7 @@ public class ChatClientMain extends JFrame {
                     continue;
                 }
 
-                // --- 유저 목록 갱신 ---
+                // 유저 목록 갱신
                 if (msg.startsWith("/userlist ")) {
                     String[] users = msg.substring(10).split(",");
                     
@@ -204,7 +236,7 @@ public class ChatClientMain extends JFrame {
                     });
                 }
 
-                // --- 방 생성 알림 ---
+                // 방 생성 알림
                 else if (msg.startsWith("/roomCreated ")) {
                     String[] parts = msg.split(" ", 3);
                     int rId = Integer.parseInt(parts[1]);
@@ -215,6 +247,7 @@ public class ChatClientMain extends JFrame {
 
                     SwingUtilities.invokeLater(() -> roomListModel.addElement(newRoom));
                 }
+                // 방 나가기 알림
                 else if (msg.startsWith("/room_exited ")) {
                     int roomId = Integer.parseInt(msg.split(" ")[1]);
 
@@ -239,7 +272,7 @@ public class ChatClientMain extends JFrame {
                 }
 
 
-                // --- 채팅 메시지 수신 ---
+                // 채팅 메시지 수신
                 else if (msg.startsWith("/roommsg ")) {
                 	String[] parts = msg.split(" ", 4);
                     int rId = Integer.parseInt(parts[1]);
@@ -372,7 +405,7 @@ public class ChatClientMain extends JFrame {
                     });
                 }
 
-                // 다른 사용자 프로필 업데이트
+                // 다른 사용자 프로필 업데이트 알림
                 else if (msg.startsWith("/profile_updated ")) {
                     String[] parts = msg.split(" ", 4);
                     String username = parts[1];
@@ -401,7 +434,7 @@ public class ChatClientMain extends JFrame {
                     });
                 }
                 
-                // 프로필 데이터 수신
+                // 프로필 데이터 요청 응답
                 else if (msg.startsWith("/profile_data ")) {
                     String[] parts = msg.split(" ", 4);
                     String username = parts[1];
@@ -464,7 +497,7 @@ public class ChatClientMain extends JFrame {
                     }
                 }
                 
-                // --- 참여자 목록 확인 결과 (UserListDialog 호출) ---
+                // 참여자 목록 확인 결과 (UserListDialog 호출)
                 else if (msg.startsWith("/roomusers_result ")) {
                     String[] parts = msg.split(" ", 3);
                     int rId = Integer.parseInt(parts[1]);
@@ -538,25 +571,36 @@ public class ChatClientMain extends JFrame {
         }
     }
     
+    /**
+     * 캐치마인드 게임 참여 요청
+     * @param roomId 방 ID
+     */
     public void openCatchMindFrame(int roomId) {
         try {
-            // 서버에 참여 요청
             dos.writeUTF("/catchmind_join " + roomId);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
     
+    /**
+     * 요트다이스 게임 참여 요청
+     * @param roomId 방 ID
+     */
     public void openYachtFrame(int roomId) {
         try {
-            // 서버에 참여 요청
             dos.writeUTF("/yacht_join " + roomId);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
     
-    // 캐치마인드 게임 창 생성 (GameMessageHandler에서 호출)
+    /**
+     * 캐치마인드 게임 창 생성
+     * GameMessageHandler에서 호출됨
+     * @param roomId 방 ID
+     * @param participants 참여자 목록
+     */
     public void createCatchMindFrame(int roomId, List<String> participants) {
         SwingUtilities.invokeLater(() -> {
             if (openedGameFrames.containsKey(roomId)) {
@@ -582,7 +626,12 @@ public class ChatClientMain extends JFrame {
         });
     }
     
-    // 요트다이스 게임 창 생성 (GameMessageHandler에서 호출)
+    /**
+     * 요트다이스 게임 창 생성
+     * GameMessageHandler에서 호출됨
+     * @param roomId 방 ID
+     * @param participants 참여자 목록
+     */
     public void createYachtFrame(int roomId, List<String> participants) {
         SwingUtilities.invokeLater(() -> {
             if (openedYachtFrames.containsKey(roomId)) {
@@ -612,7 +661,11 @@ public class ChatClientMain extends JFrame {
 
 
 
-    // 유저 이름으로 프로필 아이콘 찾는 헬퍼
+    /**
+     * 사용자명으로 프로필 아이콘 조회
+     * @param username 사용자명
+     * @return 프로필 아이콘 (없으면 기본 아이콘)
+     */
     private ImageIcon findUserIcon(String username) {
         if (username.equals("ChatBot") || username.equals("System")) {
             return defaultProfileIcon;
@@ -627,17 +680,25 @@ public class ChatClientMain extends JFrame {
         return defaultProfileIcon;
     }
 
+    /**
+     * 채팅방 창 열기
+     * 이미 열려있으면 앞으로 가져옴
+     * @param roomData 채팅방 데이터
+     */
     public void enterChatRoom(ChatRoomData roomData) {
         int roomId = roomData.getRoomId();
 
+        // 이미 열려있는 창이면 앞으로 가져오기
         if (openedRoomFrames.containsKey(roomId)) {
             openedRoomFrames.get(roomId).toFront();
             return;
         }
 
+        // 새 채팅방 창 생성
         ChatRoomFrame frame = new ChatRoomFrame(this, roomData);
         openedRoomFrames.put(roomId, frame);
 
+        // 창 닫힐 때 관리 맵에서 제거
         frame.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosed(java.awt.event.WindowEvent e) {
@@ -648,6 +709,11 @@ public class ChatClientMain extends JFrame {
         frame.setVisible(true);
     }
 
+    /**
+     * 이모지 이미지 로드
+     * @param fileName 파일명
+     * @return 이미지 아이콘
+     */
     private ImageIcon loadEmojiImage(String fileName) {
         try {
             return new ImageIcon("src/images/icon/" + fileName);
@@ -657,7 +723,7 @@ public class ChatClientMain extends JFrame {
         }
     }
 
-    
+    // Getter 메서드들
     public ChatHome getHomePanel() { return homePanel; }
     public DataOutputStream getDos() { return dos; }
     public UserProfile getMyProfile() { return myProfile; }

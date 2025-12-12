@@ -75,6 +75,10 @@ public class ChatPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
     }
 
+    /**
+     * 새 채팅방 생성
+     * 사용자 선택 다이얼로그를 열고 선택된 사용자들과 방 생성
+     */
     private void createRoom() {
     	UserSelectDialog dialog = new UserSelectDialog(parent, parent, true);
         dialog.setVisible(true);
@@ -82,7 +86,7 @@ public class ChatPanel extends JPanel {
         if (dialog.isOk()) {
             List<String> selected = dialog.getSelectedUsers();
             
-            // 방 이름 결정 로직
+            // 방 이름 결정
             String inputName = dialog.getRoomNameInput();
             String roomName;
 
@@ -94,7 +98,7 @@ public class ChatPanel extends JPanel {
                 for (String u : selected) roomName += "," + u;
             }
 
-            // 서버 전송: /makeroom [방이름] [유저1] [유저2] ...
+            // 서버에 방 생성 요청 전송
             StringBuilder cmd = new StringBuilder("/makeroom " + roomName);
             for (String u : selected) cmd.append(" ").append(u);
             
@@ -106,10 +110,14 @@ public class ChatPanel extends JPanel {
         }
     }
 
+    /**
+     * 이미지 아이콘 로드
+     * @param path 이미지 경로
+     * @return 이미지 아이콘
+     */
     private ImageIcon loadIcon(String path) {
         URL imgUrl = getClass().getResource(path);
         if (imgUrl == null) {
-            // System.err.println("이미지를 찾을 수 없습니다: " + path);
             return null;
         }
         return new ImageIcon(imgUrl);
