@@ -9,7 +9,7 @@ import java.util.List;
 
 public class WeekWeatherPage extends JPanel {
 
-	private Runnable onBack;   // 🔹 뒤로가기 동작
+	private Runnable onBack;   // 뒤로가기 동작
     private JPanel listPanel;
 
     public WeekWeatherPage(Runnable onBack) {

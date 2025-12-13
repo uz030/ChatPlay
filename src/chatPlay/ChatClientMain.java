@@ -207,34 +207,40 @@ public class ChatClientMain extends JFrame {
                 }
 
                 // ========== 유저 목록 갱신 처리 ==========
-                if (msg.startsWith("/userlist ")) {
+                 if (msg.startsWith("/userlist ")) {
                     // 서버로부터 받은 사용자 목록 파싱
                     String[] users = msg.substring(10).split(",");
                     
                     SwingUtilities.invokeLater(() -> {
-                        // 기존 사용자 목록 백업 (프로필 이미지 요청용)
-                        Set<String> existingUsers = new HashSet<>();
+                        // 1. 기존 사용자 프로필 정보 백업 (프로필 이미지, 상태메시지 보존)
+                        Map<String, UserProfile> existingProfiles = new HashMap<>();
                         for (int i = 0; i < userListModel.getSize(); i++) {
-                            existingUsers.add(userListModel.getElementAt(i).getUsername());
+                            UserProfile p = userListModel.getElementAt(i);
+                            existingProfiles.put(p.getUsername(), p);
                         }
                         
-                        // 사용자 목록 초기화 후 새 목록으로 갱신
+                        // 2. 사용자 목록 초기화 후 새 목록으로 갱신
                         userListModel.clear();
                         for (String u : users) {
                             String name = u.trim();
                             // 빈 이름이 아니고 내 이름이 아닌 경우만 추가
                             if (!name.isEmpty() && !name.equals(myProfile.getUsername())) {
-                                UserProfile user = new UserProfile(name);
-                                userListModel.addElement(user);
+                                UserProfile user;
                                 
-                                // 새로 추가된 사용자면 프로필 이미지 요청
-                                if (!existingUsers.contains(name)) {
+                                // 기존 사용자면 프로필 정보 재사용 (이미지, 상태메시지 유지)
+                                if (existingProfiles.containsKey(name)) {
+                                    user = existingProfiles.get(name);
+                                } else {
+                                    // 새 사용자면 새 프로필 생성 후 이미지 요청
+                                    user = new UserProfile(name);
                                     try {
                                         dos.writeUTF("/request_profile " + name);
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     }
                                 }
+                                
+                                userListModel.addElement(user);
                             }
                         }
                     });
