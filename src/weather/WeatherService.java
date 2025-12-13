@@ -13,7 +13,6 @@ import org.json.JSONObject;
 
 public class WeatherService {
 
-    // TODO: 여기에 네 OpenWeather API 키 넣기
     private static final String API_KEY = "f7e34460ca4bc41240c22dffd006cce9";
 
     private static final double SEOUL_LAT = 37.5665;
@@ -22,9 +21,7 @@ public class WeatherService {
     // 아이콘 캐시
     private static final Map<String, ImageIcon> ICON_CACHE = new HashMap<>();
 
-    // -----------------------------
-    // 공통: OneCall API 호출
-    // -----------------------------
+    // API 호출
     private static JSONObject requestRoot() throws Exception {
 
         String urlStr =
@@ -54,9 +51,7 @@ public class WeatherService {
         return new JSONObject(sb.toString());
     }
 
-    // -----------------------------
     // 1) 오늘 기준 24시간 (hourly)
-    // -----------------------------
     public static List<WeatherData> loadTodayHourly() throws Exception {
         JSONObject root = requestRoot();
         JSONArray hourlyArr = root.getJSONArray("hourly");
@@ -97,10 +92,7 @@ public class WeatherService {
     }
 
 
-
-    // -----------------------------
     // 2) 오늘 포함 7일 (daily[0]~[6])
-    // -----------------------------
     public static List<WeatherData> load7Days() throws Exception {
         JSONObject root = requestRoot();
         JSONArray dailyArr = root.getJSONArray("daily");
@@ -133,9 +125,7 @@ public class WeatherService {
         return list;
     }
 
-    // -----------------------------
     // 아이콘 캐시 + 로딩
-    // -----------------------------
     public static ImageIcon getIcon(String iconId) {
         if (iconId == null || iconId.isEmpty()) return null;
 
