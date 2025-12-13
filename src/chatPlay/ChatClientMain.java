@@ -292,8 +292,16 @@ public class ChatClientMain extends JFrame {
                         
                         if (imageFile.exists()) {
                             try {
-                                ImageIcon img = new ImageIcon(imageFile.getAbsolutePath());
-                                Image scaledImage = img.getImage().getScaledInstance(
+                                // ImageIO를 사용하여 안전하게 이미지 로드
+                                java.awt.image.BufferedImage bufferedImage = javax.imageio.ImageIO.read(imageFile);
+                                
+                                if (bufferedImage == null) {
+                                    System.out.println("이미지를 읽을 수 없음: " + fileName);
+                                    continue;
+                                }
+                                
+                                // 이미지 리사이징
+                                Image scaledImage = bufferedImage.getScaledInstance(
                                     300, 300, Image.SCALE_SMOOTH
                                 );
                                 ImageIcon scaledIcon = new ImageIcon(scaledImage);
@@ -316,6 +324,19 @@ public class ChatClientMain extends JFrame {
                                 continue;
                             } catch (Exception e) {
                                 e.printStackTrace();
+                                System.out.println("이미지 로드 실패: " + fileName + " - " + e.getMessage());
+                                // 에러 메시지를 채팅에 표시
+                                ChatMessage errorMsg = new ChatMessage("System", 
+                                    "[이미지 로드 실패: " + fileName + "]", false, senderIcon);
+                                room.getMessageLog().addElement(errorMsg);
+                                SwingUtilities.invokeLater(() -> {
+                                    if (openedRoomFrames.containsKey(rId)) {
+                                        openedRoomFrames.get(rId).appendMessage(errorMsg);
+                                    } else {
+                                        homePanel.appendMessageToRoom(rId, errorMsg);
+                                    }
+                                });
+                                continue;
                             }
                         } else {
                             System.out.println("이미지 파일을 찾을 수 없음: " + fileName);
@@ -324,6 +345,21 @@ public class ChatClientMain extends JFrame {
                     
                     // GAME_STARTED 메시지 처리 (버튼 비활성화용)
                     if (text.startsWith("GAME_STARTED:")) {
+                        ChatMessage chatMsg = new ChatMessage(sender, text, false, senderIcon);
+                        room.getMessageLog().addElement(chatMsg);
+
+                        SwingUtilities.invokeLater(() -> {
+                            if (openedRoomFrames.containsKey(rId)) {
+                                openedRoomFrames.get(rId).appendMessage(chatMsg);
+                            } else {
+                                homePanel.appendMessageToRoom(rId, chatMsg);
+                            }
+                        });
+                        continue;
+                    }
+                    
+                    // GAME_ENDED 메시지 처리 (버튼 활성화용)
+                    if (text.startsWith("GAME_ENDED:")) {
                         ChatMessage chatMsg = new ChatMessage(sender, text, false, senderIcon);
                         room.getMessageLog().addElement(chatMsg);
 
@@ -621,6 +657,13 @@ public class ChatClientMain extends JFrame {
                 @Override
                 public void windowClosed(java.awt.event.WindowEvent e) {
                     openedGameFrames.remove(roomId);
+                    // 서버에 게임 나가기 알림
+                    try {
+                        dos.writeUTF("/catchmind_leave " + roomId);
+                        dos.flush();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
                 }
             });
         });
@@ -652,6 +695,13 @@ public class ChatClientMain extends JFrame {
                 @Override
                 public void windowClosed(java.awt.event.WindowEvent e) {
                     openedYachtFrames.remove(roomId);
+                    // 서버에 게임 나가기 알림
+                    try {
+                        dos.writeUTF("/yacht_leave " + roomId);
+                        dos.flush();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
                 }
             });
             

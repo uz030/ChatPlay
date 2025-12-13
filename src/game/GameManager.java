@@ -108,6 +108,36 @@ public class GameManager {
         }
     }
 
+    // 게임 참여자 제거 (방 나가기, 연결 종료 시)
+    public synchronized boolean removeParticipant(int roomId, String userName) {
+        boolean removed = false;
+        
+        // 대기 중인 참여자에서 제거
+        Set<String> waiting = waitingParticipants.get(roomId);
+        if (waiting != null) {
+            removed = waiting.remove(userName);
+            if (waiting.isEmpty()) {
+                waitingParticipants.remove(roomId);
+            }
+        }
+        
+        // 활성 참여자에서 제거
+        Set<String> active = activeParticipants.get(roomId);
+        if (active != null) {
+            boolean activeRemoved = active.remove(userName);
+            if (activeRemoved) {
+                removed = true;
+                // 활성 참여자가 모두 나가면 게임 종료
+                if (active.isEmpty()) {
+                    endGame(roomId);
+                    return true; // 게임 종료됨
+                }
+            }
+        }
+        
+        return removed;
+    }
+    
     // 게임 종료
     public synchronized void endGame(int roomId) {
         GameInstance game = games.remove(roomId);

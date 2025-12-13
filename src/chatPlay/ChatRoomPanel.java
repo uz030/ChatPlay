@@ -23,6 +23,11 @@ public class ChatRoomPanel extends JPanel {
     private Emoji emoji;
     private boolean emojiOpen = false;
     
+    // 게임 버튼 참조 및 게임 상태 추적
+    private JButton currentJoinBtn;
+    private JButton currentStartBtn;
+    private boolean isGameStarted = false;
+    
     /**
      * 채팅방 패널 생성자
      * @param parent 부모 클라이언트 프레임
@@ -79,6 +84,17 @@ public class ChatRoomPanel extends JPanel {
 
         // 기존 메시지 로그 표시
         DefaultListModel<ChatMessage> logs = roomData.getMessageLog();
+        // 게임이 이미 시작되었는지 확인 (GAME_STARTED와 GAME_ENDED 메시지 추적)
+        for(int i=0; i<logs.getSize(); i++) {
+            ChatMessage logMsg = logs.getElementAt(i);
+            String content = logMsg.getContent();
+            if (content.startsWith("GAME_STARTED:")) {
+                isGameStarted = true;
+            } else if (content.startsWith("GAME_ENDED:")) {
+                isGameStarted = false;
+            }
+        }
+        // 메시지 표시
         for(int i=0; i<logs.getSize(); i++) {
             addBubble(logs.getElementAt(i));
         }
@@ -267,10 +283,15 @@ public class ChatRoomPanel extends JPanel {
             
             if (imageFile.exists()) {
                 try {
-                    ImageIcon icon = new ImageIcon(imageFile.getAbsolutePath());
+                    // ImageIO를 사용하여 안전하게 이미지 로드
+                    java.awt.image.BufferedImage bufferedImage = javax.imageio.ImageIO.read(imageFile);
+                    
+                    if (bufferedImage == null) {
+                        throw new Exception("이미지를 읽을 수 없습니다.");
+                    }
                     
                     // 이미지 리사이징
-                    Image scaledImage = icon.getImage().getScaledInstance(
+                    Image scaledImage = bufferedImage.getScaledInstance(
                         300, 300, Image.SCALE_SMOOTH
                     );
                     ImageIcon scaledIcon = new ImageIcon(scaledImage);
@@ -281,14 +302,26 @@ public class ChatRoomPanel extends JPanel {
                     
                 } catch (Exception e) {
                     e.printStackTrace();
-                    JLabel errorLabel = new JLabel("[이미지 로드 실패: " + fileName + "]");
+                    // 에러 메시지 표시
+                    JLabel errorLabel = new JLabel("[이미지 로드 실패: " + fileName + " - " + e.getMessage() + "]");
                     errorLabel.setForeground(Color.RED);
+                    errorLabel.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
                     chatContentPanel.add(errorLabel);
                     chatContentPanel.revalidate();
                     chatContentPanel.repaint();
                     scrollToBottom();
                     return;
                 }
+            } else {
+                // 파일이 존재하지 않는 경우
+                JLabel errorLabel = new JLabel("[이미지 파일을 찾을 수 없음: " + fileName + "]");
+                errorLabel.setForeground(Color.RED);
+                errorLabel.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+                chatContentPanel.add(errorLabel);
+                chatContentPanel.revalidate();
+                chatContentPanel.repaint();
+                scrollToBottom();
+                return;
             }
         }
     	
@@ -338,22 +371,32 @@ public class ChatRoomPanel extends JPanel {
             joinBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
             joinBtn.setMaximumSize(new Dimension(200, 40));
             
-            joinBtn.addActionListener(e -> {
-                try {
-                    if ("yacht".equals(gameType)) {
-                        parent.getDos().writeUTF("/yacht_join " + roomData.getRoomId());
-                        parent.openYachtFrame(roomData.getRoomId());
-                    } else {
-                        parent.getDos().writeUTF("/catchmind_join " + roomData.getRoomId());
-                        parent.openCatchMindFrame(roomData.getRoomId());
+            // 버튼 참조 저장
+            currentJoinBtn = joinBtn;
+            
+            // 게임이 이미 시작된 경우 버튼 비활성화
+            if (isGameStarted) {
+                joinBtn.setEnabled(false);
+                joinBtn.setText("게임 진행 중");
+                joinBtn.setBackground(Color.GRAY);
+            } else {
+                joinBtn.addActionListener(e -> {
+                    try {
+                        if ("yacht".equals(gameType)) {
+                            parent.getDos().writeUTF("/yacht_join " + roomData.getRoomId());
+                            parent.openYachtFrame(roomData.getRoomId());
+                        } else {
+                            parent.getDos().writeUTF("/catchmind_join " + roomData.getRoomId());
+                            parent.openCatchMindFrame(roomData.getRoomId());
+                        }
+                        joinBtn.setEnabled(false);
+                        joinBtn.setText("참여 완료!");
+                        joinBtn.setBackground(Color.GRAY);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
                     }
-                    joinBtn.setEnabled(false);
-                    joinBtn.setText("참여 완료!");
-                    joinBtn.setBackground(Color.GRAY);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            });
+                });
+            }
             
             // 게임 시작 버튼 (2명 이상 참여 시 시작 가능)
             JButton startBtn = new JButton("게임 시작 (2명 이상)");
@@ -364,22 +407,32 @@ public class ChatRoomPanel extends JPanel {
             startBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
             startBtn.setMaximumSize(new Dimension(200, 40));
             
-            startBtn.addActionListener(e -> {
-                try {
-                    if ("yacht".equals(gameType)) {
-                        parent.getDos().writeUTF("/yacht_start " + roomData.getRoomId());
-                    } else {
-                        parent.getDos().writeUTF("/catchmind_start " + roomData.getRoomId());
+            // 버튼 참조 저장
+            currentStartBtn = startBtn;
+            
+            // 게임이 이미 시작된 경우 버튼 비활성화
+            if (isGameStarted) {
+                startBtn.setEnabled(false);
+                startBtn.setText("게임 진행 중");
+                startBtn.setBackground(Color.GRAY);
+            } else {
+                startBtn.addActionListener(e -> {
+                    try {
+                        if ("yacht".equals(gameType)) {
+                            parent.getDos().writeUTF("/yacht_start " + roomData.getRoomId());
+                        } else {
+                            parent.getDos().writeUTF("/catchmind_start " + roomData.getRoomId());
+                        }
+                        // 버튼 비활성화
+                        startBtn.setEnabled(false);
+                        joinBtn.setEnabled(false);
+                        startBtn.setText("게임 시작됨");
+                        startBtn.setBackground(Color.GRAY);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
                     }
-                    // 버튼 비활성화
-                    startBtn.setEnabled(false);
-                    joinBtn.setEnabled(false);
-                    startBtn.setText("게임 시작됨");
-                    startBtn.setBackground(Color.GRAY);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            });
+                });
+            }
             
             joinPanel.add(titleLabel);
             joinPanel.add(Box.createVerticalStrut(10));
@@ -400,6 +453,21 @@ public class ChatRoomPanel extends JPanel {
         
         // 게임 시작 알림 처리 (버튼 비활성화용)
         if (msg.getContent().startsWith("GAME_STARTED:")) {
+            // 게임 상태 업데이트
+            isGameStarted = true;
+            
+            // 기존 버튼 비활성화
+            if (currentJoinBtn != null) {
+                currentJoinBtn.setEnabled(false);
+                currentJoinBtn.setText("게임 진행 중");
+                currentJoinBtn.setBackground(Color.GRAY);
+            }
+            if (currentStartBtn != null) {
+                currentStartBtn.setEnabled(false);
+                currentStartBtn.setText("게임 진행 중");
+                currentStartBtn.setBackground(Color.GRAY);
+            }
+            
             JLabel startedLabel = new JLabel("🎮 게임이 시작되었습니다!");
             startedLabel.setFont(new Font("맑은 고딕", Font.BOLD, 14));
             startedLabel.setForeground(new Color(0, 150, 0));
@@ -411,6 +479,42 @@ public class ChatRoomPanel extends JPanel {
             startedPanel.add(startedLabel);
             
             chatContentPanel.add(startedPanel);
+            chatContentPanel.add(Box.createVerticalStrut(10));
+            
+            chatContentPanel.revalidate();
+            chatContentPanel.repaint();
+            scrollToBottom();
+            return;
+        }
+        
+        // 게임 종료 알림 처리 (버튼 활성화용)
+        if (msg.getContent().startsWith("GAME_ENDED:")) {
+            // 게임 상태 업데이트
+            isGameStarted = false;
+            
+            // 기존 버튼 활성화
+            if (currentJoinBtn != null) {
+                currentJoinBtn.setEnabled(true);
+                currentJoinBtn.setText("게임 참여하기");
+                currentJoinBtn.setBackground(new Color(100, 200, 255));
+            }
+            if (currentStartBtn != null) {
+                currentStartBtn.setEnabled(true);
+                currentStartBtn.setText("게임 시작 (2명 이상)");
+                currentStartBtn.setBackground(new Color(255, 100, 100));
+            }
+            
+            JLabel endedLabel = new JLabel("🏁 게임이 종료되었습니다.");
+            endedLabel.setFont(new Font("맑은 고딕", Font.BOLD, 14));
+            endedLabel.setForeground(new Color(150, 100, 0));
+            endedLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            
+            JPanel endedPanel = new JPanel();
+            endedPanel.setBackground(new Color(255, 250, 240));
+            endedPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            endedPanel.add(endedLabel);
+            
+            chatContentPanel.add(endedPanel);
             chatContentPanel.add(Box.createVerticalStrut(10));
             
             chatContentPanel.revalidate();

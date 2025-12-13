@@ -298,6 +298,14 @@ public class ChatServer extends JFrame {
                     room.broadcast(
                             "/roommsg " + room.roomId + " System " + userName + "님이 퇴장했습니다."
                     );
+                    
+                    // 게임 참여자에서 제거 및 게임 종료 체크
+                    boolean gameEnded = server.gameManager.removeParticipant(room.roomId, userName);
+                    if (gameEnded) {
+                        // 게임 종료 메시지 전송
+                        server.sendMsgToRoom(room.roomId, "ChatBot", "GAME_ENDED:" + room.roomId);
+                        server.AppendText("게임 종료 (참여자 전원 퇴장): Room " + room.roomId);
+                    }
                 }
             }
 
@@ -375,6 +383,14 @@ public class ChatServer extends JFrame {
                                 if (room != null) {
                                     room.participants.remove(this);
                                     room.broadcast("/roommsg " + rId + " System " + userName + "님이 방을 나갔습니다.");
+
+                                    // 게임 참여자에서 제거 및 게임 종료 체크
+                                    boolean gameEnded = server.gameManager.removeParticipant(rId, userName);
+                                    if (gameEnded) {
+                                        // 게임 종료 메시지 전송
+                                        server.sendMsgToRoom(rId, "ChatBot", "GAME_ENDED:" + rId);
+                                        server.AppendText("게임 종료 (참여자 전원 퇴장): Room " + rId);
+                                    }
 
                                     if (room.participants.isEmpty()) {
                                         server.roomMap.remove(rId);
@@ -570,6 +586,13 @@ public class ChatServer extends JFrame {
                         	Room yachtRoom = server.roomMap.get(yachtJoinId);
                         
                         	if (yachtRoom != null) {
+                        		// 게임이 이미 진행 중이면 참여 불가
+                        		if (server.gameManager.isGameRunning(yachtJoinId)) {
+                        			server.sendMsgToRoom(yachtJoinId, "System",
+                        				"게임이 이미 진행 중입니다. 참여할 수 없습니다.");
+                        			break;
+                        		}
+                        		
                         		// GameManager에 참여자 추가
                         		boolean added = server.gameManager.addParticipant(yachtJoinId, userName, GameType.YACHT);
                             
@@ -583,12 +606,33 @@ public class ChatServer extends JFrame {
                         		}
                         	}
                         	break;
+                        	
+                        case "/yacht_leave": // 요트다이스 게임 나가기
+                            if (args.length < 2) break;
+                            
+                            int yachtLeaveId = Integer.parseInt(args[1]);
+                            
+                            // 게임 참여자에서 제거 및 게임 종료 체크
+                            boolean yachtGameEnded = server.gameManager.removeParticipant(yachtLeaveId, userName);
+                            if (yachtGameEnded) {
+                                // 게임 종료 메시지 전송
+                                server.sendMsgToRoom(yachtLeaveId, "ChatBot", "GAME_ENDED:" + yachtLeaveId);
+                                server.AppendText("게임 종료 (참여자 전원 퇴장): Room " + yachtLeaveId);
+                            }
+                            break;
 
                         case "/yacht_start": // 요트다이스 게임 시작
                             if (args.length < 2) break;
 
                             int yachtStartId = Integer.parseInt(args[1]);
                             Room yachtStartRoom = server.roomMap.get(yachtStartId);
+
+                            // 게임이 이미 진행 중이면 시작 불가
+                            if (server.gameManager.isGameRunning(yachtStartId)) {
+                                server.sendMsgToRoom(yachtStartId, "System",
+                                    "게임이 이미 진행 중입니다.");
+                                break;
+                            }
 
                             // GameManager로 게임 시작 가능 확인
                             if (!server.gameManager.canStartGame(yachtStartId, GameType.YACHT)) {
@@ -667,6 +711,13 @@ public class ChatServer extends JFrame {
                             Room catchJoinRoom = server.roomMap.get(catchJoinId);
                             
                             if (catchJoinRoom != null) {
+                                // 게임이 이미 진행 중이면 참여 불가
+                                if (server.gameManager.isGameRunning(catchJoinId)) {
+                                    server.sendMsgToRoom(catchJoinId, "System",
+                                        "게임이 이미 진행 중입니다. 참여할 수 없습니다.");
+                                    break;
+                                }
+                                
                                 // GameManager에 참여자 추가
                                 boolean added = server.gameManager.addParticipant(catchJoinId, userName, GameType.CATCH_MIND);
                                 
@@ -680,12 +731,33 @@ public class ChatServer extends JFrame {
                                 }
                             }
                             break;
+                            
+                        case "/catchmind_leave": // 캐치마인드 게임 나가기
+                            if (args.length < 2) break;
+                            
+                            int catchLeaveId = Integer.parseInt(args[1]);
+                            
+                            // 게임 참여자에서 제거 및 게임 종료 체크
+                            boolean catchGameEnded = server.gameManager.removeParticipant(catchLeaveId, userName);
+                            if (catchGameEnded) {
+                                // 게임 종료 메시지 전송
+                                server.sendMsgToRoom(catchLeaveId, "ChatBot", "GAME_ENDED:" + catchLeaveId);
+                                server.AppendText("게임 종료 (참여자 전원 퇴장): Room " + catchLeaveId);
+                            }
+                            break;
 
                         case "/catchmind_start": // 캐치마인드 게임 시작
                             if (args.length < 2) break;
                             
                             int catchStartId = Integer.parseInt(args[1]);
                             Room catchStartRoom = server.roomMap.get(catchStartId);
+                            
+                            // 게임이 이미 진행 중이면 시작 불가
+                            if (server.gameManager.isGameRunning(catchStartId)) {
+                                server.sendMsgToRoom(catchStartId, "System",
+                                    "게임이 이미 진행 중입니다.");
+                                break;
+                            }
                             
                             // GameManager로 게임 시작 가능 확인
                             if (!server.gameManager.canStartGame(catchStartId, GameType.CATCH_MIND)) {
