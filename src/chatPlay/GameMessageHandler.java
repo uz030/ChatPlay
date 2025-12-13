@@ -31,8 +31,7 @@ public class GameMessageHandler {
      * @return 게임 메시지인 경우 true, 아니면 false
      */
     public boolean handleMessage(String msg) {
-        
-        // 게임 참가자 목록 (게임 창 생성)
+        // ========== 게임 참가자 목록 처리 (게임 창 생성) ==========
         if (msg.startsWith("/game_participants ")) {
             String[] parts = msg.split(" ", 4);
             int roomId = Integer.parseInt(parts[1]);
@@ -51,8 +50,7 @@ public class GameMessageHandler {
             }
             return true;
         }
-        
-        // 출제자 지정
+        // ========== 캐치마인드 출제자 지정 처리 ==========
         else if (msg.startsWith("/catchmind_drawer ")) {
             String[] parts = msg.split(" ", 3);
             int roomId = Integer.parseInt(parts[1]);
@@ -66,8 +64,7 @@ public class GameMessageHandler {
             });
             return true;
         }
-        
-        // 출제자에게 단어 전송
+        // ========== 캐치마인드 출제자에게 단어 전송 처리 ==========
         else if (msg.startsWith("/catchmind_word ")) {
             String[] parts = msg.split(" ", 3);
             int roomId = Integer.parseInt(parts[1]);
@@ -81,8 +78,7 @@ public class GameMessageHandler {
             });
             return true;
         }
-        
-        // 게임 채팅 메시지
+        // ========== 게임 채팅 메시지 처리 ==========
         else if (msg.startsWith("/game_chat ")) {
             String[] parts = msg.split(" ", 4);
             int roomId = Integer.parseInt(parts[1]);
@@ -101,8 +97,7 @@ public class GameMessageHandler {
             });
             return true;
         }
-        
-        // 타이머 시작
+        // ========== 게임 타이머 시작 처리 ==========
         else if (msg.startsWith("/start_timer ")) {
             String[] parts = msg.split(" ");
             int roomId = Integer.parseInt(parts[1]);
@@ -115,8 +110,7 @@ public class GameMessageHandler {
             });
             return true;
         }
-        
-        // 정답 공개
+        // ========== 캐치마인드 정답 공개 처리 ==========
         else if (msg.startsWith("/reveal_answer ")) {
             String[] parts = msg.split(" ", 3);
             int roomId = Integer.parseInt(parts[1]);
@@ -130,13 +124,11 @@ public class GameMessageHandler {
             });
             return true;
         }
-        
-        // 정답 맞춤 처리
+        // ========== 캐치마인드 정답 맞춤 처리 ==========
         else if (msg.startsWith("/correct_answer ")) {
             String[] parts = msg.split(" ", 5);
             int roomId = Integer.parseInt(parts[1]);
             String userName = parts[2];
-            String word = parts[3];
             int score = Integer.parseInt(parts[4]);
             
             SwingUtilities.invokeLater(() -> {
@@ -147,8 +139,7 @@ public class GameMessageHandler {
             });
             return true;
         }
-        
-        // 점수 업데이트
+        // ========== 게임 점수 업데이트 처리 ==========
         else if (msg.startsWith("/score_update ")) {
             String[] parts = msg.split(" ");
             int roomId = Integer.parseInt(parts[1]);
@@ -163,8 +154,7 @@ public class GameMessageHandler {
             });
             return true;
         }
-        
-        // 그림 그리기 데이터 수신
+        // ========== 그림 그리기 데이터 수신 처리 ==========
         else if (msg.startsWith("/draw ")) {
             String[] parts = msg.split(" ");
             if (parts.length >= 10) {
@@ -189,8 +179,7 @@ public class GameMessageHandler {
             }
             return true;
         }
-        
-        // 캔버스 지우기
+        // ========== 캔버스 지우기 처리 ==========
         else if (msg.startsWith("/cleardraw ")) {
             int roomId = Integer.parseInt(msg.split(" ")[1]);
             
@@ -202,8 +191,7 @@ public class GameMessageHandler {
             });
             return true;
         }
-        
-        // 요트다이스 게임 상태 업데이트
+        // ========== 요트다이스 게임 상태 업데이트 처리 ==========
         else if (msg.startsWith("/yacht_update ")) {
             String[] parts = msg.split(" ", 3);
             int roomId = Integer.parseInt(parts[1]);
@@ -214,8 +202,7 @@ public class GameMessageHandler {
             });
             return true;
         }
-        
-        // 게임 종료
+        // ========== 게임 종료 처리 ==========
         else if (msg.startsWith("/game_ended ")) {
             String[] parts = msg.split(" ", 4);
             int roomId = Integer.parseInt(parts[1]);

@@ -39,21 +39,26 @@ public class MainPanel extends JPanel {
             selectedIcon = defaultProfileIcon;
         }
 
+        // ========== 프로필 이미지 선택 영역 ==========
+        // 선택된 프로필 이미지 표시 (큰 이미지)
         selectedProfileImageLabel = new JLabel(getScaledIcon(selectedIcon, 115, 115));
         selectedProfileImageLabel.setBounds(135, 95, 115, 115);
         add(selectedProfileImageLabel);
 
+        // 기본 프로필 이미지 옵션
         JLabel defaultOption = new JLabel(getScaledIcon(defaultProfileIcon, 60, 60));
         defaultOption.setBounds(125, 220, 60, 60);
         defaultOption.setCursor(new Cursor(Cursor.HAND_CURSOR));
         defaultOption.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
+                // 기본 프로필 이미지로 변경
                 selectedIcon = defaultProfileIcon;
                 selectedProfileImageLabel.setIcon(getScaledIcon(selectedIcon, 115, 115));
             }
         });
         add(defaultOption);
 
+        // 사용자 이미지 추가 옵션
         JLabel addOption = new JLabel("[+]");
         try {
             ImageIcon addIcon = new ImageIcon(getClass().getResource("/images/add.png"));
@@ -63,9 +68,11 @@ public class MainPanel extends JPanel {
         addOption.setCursor(new Cursor(Cursor.HAND_CURSOR));
         addOption.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
+                // 파일 선택 다이얼로그 열기
                 JFileChooser chooser = new JFileChooser();
                 chooser.setFileFilter(new FileNameExtensionFilter("Images", "jpg", "png", "gif"));
                 if (chooser.showOpenDialog(MainPanel.this) == JFileChooser.APPROVE_OPTION) {
+                    // 선택한 이미지로 프로필 이미지 변경
                     selectedIcon = new ImageIcon(chooser.getSelectedFile().getAbsolutePath());
                     selectedProfileImageLabel.setIcon(getScaledIcon(selectedIcon, 115, 115));
                 }
@@ -73,6 +80,7 @@ public class MainPanel extends JPanel {
         });
         add(addOption);
 
+        // ========== 사용자명 입력 영역 ==========
         JLabel lbl = new JLabel("이름을 입력해주세요.");
         lbl.setHorizontalAlignment(SwingConstants.CENTER);
         lbl.setFont(new Font("맑은 고딕", Font.BOLD, 14));
@@ -84,10 +92,11 @@ public class MainPanel extends JPanel {
         txtUserName.setBounds(120, 325, 150, 33);
         add(txtUserName);
 
-        // 서버 연결 버튼
+        // ========== 서버 연결 버튼 ==========
         RoundedButton btnConnect = new RoundedButton("회원가입", new Color(200, 210, 255), new Color(170, 185, 255), new Color(40, 50, 80));
         btnConnect.setBounds(93, 380, 205, 50);
         btnConnect.addActionListener(e -> {
+            // 사용자명이 입력되었으면 서버에 연결
             String name = txtUserName.getText().trim();
             if (!name.isEmpty()) parentFrame.connectToServer(name, selectedIcon);
         });

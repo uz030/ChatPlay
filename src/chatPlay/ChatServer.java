@@ -327,15 +327,19 @@ public class ChatServer extends JFrame {
                     String[] args = msg.split(" ");
                     if (args.length < 1) continue;
 
-                    // 프로토콜에 따른 명령 처리
+                    // ========== 프로토콜에 따른 명령 처리 ==========
                     switch (args[0]) {
 
-                        case "/makeroom": // 채팅방 생성
+                        // ========== 채팅방 생성 요청 처리 ==========
+                        case "/makeroom":
                             if (args.length >= 2) {
+                                // 방 이름 추출
                                 String rName = args[1];
+                                // 참여자 목록 초기화 (요청자 포함)
                                 Vector<UserService> members = new Vector<>();
                                 members.add(this);
 
+                                // 추가 초대 대상 사용자 찾아서 추가
                                 for (int i = 2; i < args.length; i++) {
                                     for (UserService u : server.UserVec) {
                                         if (u.userName.equals(args[i])) {
@@ -344,11 +348,13 @@ public class ChatServer extends JFrame {
                                         }
                                     }
                                 }
+                                // 방 생성
                                 server.createRoom(rName, members);
                             }
                             break;
 
-                        case "/invite": // 사용자 초대
+                        // ========== 사용자 초대 요청 처리 ==========
+                        case "/invite":
                             if (args.length >= 3) {
                                 int rId = Integer.parseInt(args[1]);
                                 String targetName = args[2];
@@ -375,16 +381,20 @@ public class ChatServer extends JFrame {
                             }
                             break;
                             
-                        case "/exitroom": // 방 나가기
+                        // ========== 방 나가기 요청 처리 ==========
+                        case "/exitroom":
                             if (args.length >= 2) {
+                                // 방 ID 파싱
                                 int rId = Integer.parseInt(args[1]);
                                 Room room = server.roomMap.get(rId);
 
                                 if (room != null) {
+                                    // 참여자 목록에서 제거
                                     room.participants.remove(this);
+                                    // 방 참여자들에게 퇴장 알림 브로드캐스트
                                     room.broadcast("/roommsg " + rId + " System " + userName + "님이 방을 나갔습니다.");
 
-                                    // 게임 참여자에서 제거 및 게임 종료 체크
+                                    // 게임 참여자에서 제거 및 게임 종료 여부 확인
                                     boolean gameEnded = server.gameManager.removeParticipant(rId, userName);
                                     if (gameEnded) {
                                         // 게임 종료 메시지 전송
@@ -392,16 +402,19 @@ public class ChatServer extends JFrame {
                                         server.AppendText("게임 종료 (참여자 전원 퇴장): Room " + rId);
                                     }
 
+                                    // 방이 비어있으면 방 제거
                                     if (room.participants.isEmpty()) {
                                         server.roomMap.remove(rId);
                                     }
                                 }
 
+                                // 나간 사용자에게 확인 메시지 전송
                                 WriteOne("/room_exited " + rId);
                             }
                             break;
 
-                        case "/roomusers": // 참여자 목록 조회
+                        // ========== 참여자 목록 조회 요청 처리 ==========
+                        case "/roomusers":
                             if (args.length < 2) break;
 
                             int rId = Integer.parseInt(args[1]);
@@ -415,20 +428,25 @@ public class ChatServer extends JFrame {
                             }
                             break;
                         
-                        case "/roommsg": // 채팅 메시지 전송
+                        // ========== 채팅 메시지 전송 요청 처리 ==========
+                        case "/roommsg":
                             if (args.length >= 3) {
+                                // 방 ID와 메시지 내용 파싱
                                 int roomMsgId = Integer.parseInt(args[1]);
                                 String content = msg.substring(msg.indexOf(args[2])).trim();
 
+                                // 방 참여자들에게 메시지 브로드캐스트
                                 server.sendMsgToRoom(roomMsgId, userName, content);
 
+                                // 챗봇 호출 메시지인 경우 챗봇 메뉴 응답
                                if (content.equals("@채팅봇")) {
                             	   server.sendMsgToRoom(roomMsgId, "ChatBot", "BOT_MENU:뉴스,날씨,게임");
                                	}
                             }
                             break;
                             
-                        case "/upload_image": // 이미지 파일 업로드
+                        // ========== 이미지 파일 업로드 요청 처리 ==========
+                        case "/upload_image":
                             if (args.length >= 3) {
                                 int roomId = Integer.parseInt(args[1]);
                                 String fileName = args[2];
@@ -457,31 +475,33 @@ public class ChatServer extends JFrame {
                             }
                             break;
                         
-                        case "/upload_profile": // 프로필 이미지 업로드
+                        // ========== 프로필 이미지 업로드 요청 처리 ==========
+                        case "/upload_profile":
                             if (args.length >= 3) {
-                                String imageType = args[1]; // "icon" 또는 "background"
+                                // 이미지 타입("icon" 또는 "background")과 파일명 파싱
+                                String imageType = args[1];
                                 String fileName = args[2];
                                 
                                 try {
-                                    // 파일 크기 읽기
+                                    // 1단계: 파일 크기 읽기
                                     int fileSize = dis.readInt();
                                     
-                                    // 파일 데이터 읽기
+                                    // 2단계: 파일 데이터 읽기
                                     byte[] fileData = new byte[fileSize];
                                     dis.readFully(fileData);
                                     
-                                    // profile_images 폴더에 저장
-                                    // 형식: username_icon.png 또는 username_background.png
+                                    // 3단계: profile_images 폴더에 저장
+                                    // 파일명 형식: username_icon.png 또는 username_background.png
                                     String savedFileName = userName + "_" + imageType + "_" + fileName;
                                     File destFile = new File(PROFILE_FOLDER + savedFileName);
                                     java.nio.file.Files.write(destFile.toPath(), fileData);
                                     
                                     AppendText("프로필 이미지 저장: " + savedFileName + " (" + fileSize + " bytes)");
                                     
-                                    // 저장된 파일명을 클라이언트에게 회신
+                                    // 4단계: 저장된 파일명을 클라이언트에게 회신
                                     WriteOne("/profile_saved " + imageType + " " + savedFileName);
                                     
-                                    // 모든 사용자에게 프로필 변경 알림 브로드캐스트
+                                    // 5단계: 모든 사용자에게 프로필 변경 알림 브로드캐스트
                                     server.WriteAll("/profile_updated " + userName + " " + imageType + " " + savedFileName);
                                     
                                 } catch (Exception ex) {
@@ -491,7 +511,8 @@ public class ChatServer extends JFrame {
                             }
                             break;
 
-                        case "/request_profile": // 프로필 이미지 요청
+                        // ========== 프로필 이미지 요청 처리 ==========
+                        case "/request_profile":
                             if (args.length >= 2) {
                                 String targetUser = args[1];
                                 
@@ -534,7 +555,8 @@ public class ChatServer extends JFrame {
                             }
                             break;
                             
-                        case "/bot": // 챗봇 명령 처리
+                        // ========== 챗봇 명령 처리 ==========
+                        case "/bot":
                             if (args.length >= 3) {
                                 String command = args[1];
                                 int botRoomId = Integer.parseInt(args[2]);
@@ -561,25 +583,32 @@ public class ChatServer extends JFrame {
                              }
                              break;
  
-                        case "/gamemsg": // 게임 메시지 전송
+                        // ========== 게임 메시지 전송 요청 처리 ==========
+                        case "/gamemsg":
                             if (args.length >= 3) {
+                                // 방 ID와 메시지 내용 파싱
                                 int roomId = Integer.parseInt(args[1]);
                                 String content = msg.substring(msg.indexOf(args[2])).trim();
                                 
+                                // GameManager에 게임 메시지 전달
                                 server.gameManager.handleGameMessage(roomId, userName, content);
                             }
                             break;
 
+                        // ========== 요트다이스 게임 메시지 전송 요청 처리 ==========
                         case "/game_yacht":
                             if (args.length >= 3) {
+                                // 방 ID와 메시지 내용 파싱
                                 int roomId = Integer.parseInt(args[1]);
                                 String content = msg.substring(msg.indexOf(args[2])).trim();
                                 
+                                // GameManager에 게임 메시지 전달
                                 server.gameManager.handleGameMessage(roomId, userName, content);
                             }
                             break;
 
-                        case "/yacht_join": // 요트다이스 게임 참여
+                        // ========== 요트다이스 게임 참여 요청 처리 ==========
+                        case "/yacht_join":
                         	if (args.length < 2) break;
                         
                         	int yachtJoinId = Integer.parseInt(args[1]);
@@ -607,12 +636,14 @@ public class ChatServer extends JFrame {
                         	}
                         	break;
                         	
-                        case "/yacht_leave": // 요트다이스 게임 나가기
+                        // ========== 요트다이스 게임 나가기 요청 처리 ==========
+                        case "/yacht_leave":
                             if (args.length < 2) break;
                             
+                            // 방 ID 파싱
                             int yachtLeaveId = Integer.parseInt(args[1]);
                             
-                            // 게임 참여자에서 제거 및 게임 종료 체크
+                            // 게임 참여자에서 제거 및 게임 종료 여부 확인
                             boolean yachtGameEnded = server.gameManager.removeParticipant(yachtLeaveId, userName);
                             if (yachtGameEnded) {
                                 // 게임 종료 메시지 전송
@@ -621,7 +652,8 @@ public class ChatServer extends JFrame {
                             }
                             break;
 
-                        case "/yacht_start": // 요트다이스 게임 시작
+                        // ========== 요트다이스 게임 시작 요청 처리 ==========
+                        case "/yacht_start":
                             if (args.length < 2) break;
 
                             int yachtStartId = Integer.parseInt(args[1]);
@@ -704,7 +736,8 @@ public class ChatServer extends JFrame {
                             }
                             break;
 
-                        case "/catchmind_join": // 캐치마인드 게임 참여
+                        // ========== 캐치마인드 게임 참여 요청 처리 ==========
+                        case "/catchmind_join":
                             if (args.length < 2) break;
                             
                             int catchJoinId = Integer.parseInt(args[1]);
@@ -732,7 +765,8 @@ public class ChatServer extends JFrame {
                             }
                             break;
                             
-                        case "/catchmind_leave": // 캐치마인드 게임 나가기
+                        // ========== 캐치마인드 게임 나가기 요청 처리 ==========
+                        case "/catchmind_leave":
                             if (args.length < 2) break;
                             
                             int catchLeaveId = Integer.parseInt(args[1]);
@@ -746,7 +780,8 @@ public class ChatServer extends JFrame {
                             }
                             break;
 
-                        case "/catchmind_start": // 캐치마인드 게임 시작
+                        // ========== 캐치마인드 게임 시작 요청 처리 ==========
+                        case "/catchmind_start":
                             if (args.length < 2) break;
                             
                             int catchStartId = Integer.parseInt(args[1]);
@@ -829,7 +864,8 @@ public class ChatServer extends JFrame {
                             }
                             break;
 
-                        case "/draw": // 그림 그리기 데이터 전송
+                        // ========== 그림 그리기 데이터 전송 요청 처리 ==========
+                        case "/draw":
                             if (args.length >= 10) {
                                 int drawRoomId = Integer.parseInt(args[1]);
                                 Room drawRoom = server.roomMap.get(drawRoomId);
@@ -850,7 +886,8 @@ public class ChatServer extends JFrame {
                             }
                             break;
 
-                        case "/cleardraw": // 캔버스 지우기
+                        // ========== 캔버스 지우기 요청 처리 ==========
+                        case "/cleardraw":
                             if (args.length >= 2) {
                                 int clearRoomId = Integer.parseInt(args[1]);
                                 Room clearRoom = server.roomMap.get(clearRoomId);
@@ -871,7 +908,8 @@ public class ChatServer extends JFrame {
                             }
                             break;
 
-                        case "/endgame": // 게임 종료
+                        // ========== 게임 종료 요청 처리 ==========
+                        case "/endgame":
                             if (args.length >= 2) {
                                 int endGameRoomId = Integer.parseInt(args[1]);
                                 

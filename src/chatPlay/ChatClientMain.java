@@ -206,24 +206,28 @@ public class ChatClientMain extends JFrame {
                     continue;
                 }
 
-                // 유저 목록 갱신
+                // ========== 유저 목록 갱신 처리 ==========
                 if (msg.startsWith("/userlist ")) {
+                    // 서버로부터 받은 사용자 목록 파싱
                     String[] users = msg.substring(10).split(",");
                     
                     SwingUtilities.invokeLater(() -> {
+                        // 기존 사용자 목록 백업 (프로필 이미지 요청용)
                         Set<String> existingUsers = new HashSet<>();
                         for (int i = 0; i < userListModel.getSize(); i++) {
                             existingUsers.add(userListModel.getElementAt(i).getUsername());
                         }
                         
+                        // 사용자 목록 초기화 후 새 목록으로 갱신
                         userListModel.clear();
                         for (String u : users) {
                             String name = u.trim();
+                            // 빈 이름이 아니고 내 이름이 아닌 경우만 추가
                             if (!name.isEmpty() && !name.equals(myProfile.getUsername())) {
                                 UserProfile user = new UserProfile(name);
                                 userListModel.addElement(user);
                                 
-                                // 새 사용자면 프로필 이미지 요청
+                                // 새로 추가된 사용자면 프로필 이미지 요청
                                 if (!existingUsers.contains(name)) {
                                     try {
                                         dos.writeUTF("/request_profile " + name);
@@ -235,27 +239,30 @@ public class ChatClientMain extends JFrame {
                         }
                     });
                 }
-
-                // 방 생성 알림
+                // ========== 방 생성 알림 처리 ==========
                 else if (msg.startsWith("/roomCreated ")) {
+                    // 방 ID와 방 이름 파싱
                     String[] parts = msg.split(" ", 3);
                     int rId = Integer.parseInt(parts[1]);
                     String rName = parts[2];
 
+                    // 새 방 데이터 생성 및 맵에 추가
                     ChatRoomData newRoom = new ChatRoomData(rId, rName);
                     roomMap.put(rId, newRoom);
 
+                    // UI 리스트에 방 추가
                     SwingUtilities.invokeLater(() -> roomListModel.addElement(newRoom));
                 }
-                // 방 나가기 알림
+                // ========== 방 나가기 알림 처리 ==========
                 else if (msg.startsWith("/room_exited ")) {
+                    // 방 ID 파싱
                     int roomId = Integer.parseInt(msg.split(" ")[1]);
 
                     SwingUtilities.invokeLater(() -> {
-                        // 1. roomMap에서 제거
+                        // 1. 내부 맵에서 방 데이터 제거
                         roomMap.remove(roomId);
 
-                        // 2. UI 리스트에서 제거
+                        // 2. UI 리스트에서 방 제거
                         for (int i = 0; i < roomListModel.size(); i++) {
                             if (roomListModel.get(i).getRoomId() == roomId) {
                                 roomListModel.remove(i);
@@ -263,7 +270,7 @@ public class ChatClientMain extends JFrame {
                             }
                         }
 
-                        // 3. 만약 방 창이 열려 있으면 닫기
+                        // 3. 열려있는 방 창이 있으면 닫기
                         ChatRoomFrame frame = openedRoomFrames.get(roomId);
                         if (frame != null) {
                             frame.dispose();
@@ -272,20 +279,23 @@ public class ChatClientMain extends JFrame {
                 }
 
 
-                // 채팅 메시지 수신
+                // ========== 채팅 메시지 수신 처리 ==========
                 else if (msg.startsWith("/roommsg ")) {
+                    // 메시지 파싱: 방 ID, 발신자, 내용 추출
                 	String[] parts = msg.split(" ", 4);
                     int rId = Integer.parseInt(parts[1]);
                     String sender = parts[2];
                     String text = parts[3];
 
+                    // 방 데이터 조회 (없으면 무시)
                     ChatRoomData room = roomMap.get(rId);
                     if (room == null) continue;
 
+                    // 발신자 정보 설정 (내 메시지인지, 아이콘은 무엇인지)
                     boolean isMine = sender.equals(myProfile.getUsername());
                     ImageIcon senderIcon = isMine ? myProfile.getIcon() : findUserIcon(sender);
                     
-                    // 파일 기반 이미지 메시지 처리
+                    // ========== 파일 기반 이미지 메시지 처리 ==========
                     if (text.startsWith("@imagefile ")) {
                         String fileName = text.substring(11).trim();
                         File imageFile = new File("shared_images/" + fileName);
@@ -343,7 +353,7 @@ public class ChatClientMain extends JFrame {
                         }
                     }
                     
-                    // GAME_STARTED 메시지 처리 (버튼 비활성화용)
+                    // ========== GAME_STARTED 메시지 처리 (게임 시작 알림, 버튼 비활성화용) ==========
                     if (text.startsWith("GAME_STARTED:")) {
                         ChatMessage chatMsg = new ChatMessage(sender, text, false, senderIcon);
                         room.getMessageLog().addElement(chatMsg);
@@ -358,7 +368,7 @@ public class ChatClientMain extends JFrame {
                         continue;
                     }
                     
-                    // GAME_ENDED 메시지 처리 (버튼 활성화용)
+                    // ========== GAME_ENDED 메시지 처리 (게임 종료 알림, 버튼 활성화용) ==========
                     if (text.startsWith("GAME_ENDED:")) {
                         ChatMessage chatMsg = new ChatMessage(sender, text, false, senderIcon);
                         room.getMessageLog().addElement(chatMsg);
@@ -373,7 +383,7 @@ public class ChatClientMain extends JFrame {
                         continue;
                     }
 
-                    // GAME_JOIN 메시지 처리 (참여 UI)
+                    // ========== GAME_JOIN 메시지 처리 (게임 참여 UI 표시) ==========
                     if (text.startsWith("GAME_JOIN:")) {
                         ChatMessage chatMsg = new ChatMessage(sender, text, false, senderIcon);
                         room.getMessageLog().addElement(chatMsg);
@@ -388,7 +398,7 @@ public class ChatClientMain extends JFrame {
                         continue;
                     }
 
-                    // 이미지 메시지
+                    // ========== 이모지 이미지 메시지 처리 ==========
                     if (text.startsWith("@images")) {
                         String fileName = text.substring(8).trim();
                         ImageIcon img = loadEmojiImage(fileName);
@@ -411,7 +421,7 @@ public class ChatClientMain extends JFrame {
                         continue;
                     }
 
-                    // 일반 텍스트 메시지
+                    // ========== 일반 텍스트 메시지 처리 ==========
                     ChatMessage chatMsg = new ChatMessage(sender, text, isMine, senderIcon);
                     room.getMessageLog().addElement(chatMsg);
 
@@ -423,7 +433,7 @@ public class ChatClientMain extends JFrame {
                         }
                     });
                 }
-                
+                // ========== 프로필 이미지 저장 완료 알림 처리 ==========
                 else if (msg.startsWith("/profile_saved ")) {
                     String[] parts = msg.split(" ", 3);
                     String imageType = parts[1];
@@ -441,7 +451,7 @@ public class ChatClientMain extends JFrame {
                     });
                 }
 
-                // 다른 사용자 프로필 업데이트 알림
+                // ========== 다른 사용자 프로필 업데이트 알림 처리 ==========
                 else if (msg.startsWith("/profile_updated ")) {
                     String[] parts = msg.split(" ", 4);
                     String username = parts[1];
@@ -470,7 +480,7 @@ public class ChatClientMain extends JFrame {
                     });
                 }
                 
-                // 프로필 데이터 요청 응답
+                // ========== 프로필 데이터 요청 응답 처리 ==========
                 else if (msg.startsWith("/profile_data ")) {
                     String[] parts = msg.split(" ", 4);
                     String username = parts[1];
@@ -533,26 +543,27 @@ public class ChatClientMain extends JFrame {
                     }
                 }
                 
-                // 참여자 목록 확인 결과 (UserListDialog 호출)
+                // ========== 참여자 목록 확인 결과 처리 (UserListDialog 호출) ==========
                 else if (msg.startsWith("/roomusers_result ")) {
                     String[] parts = msg.split(" ", 3);
                     int rId = Integer.parseInt(parts[1]);
                     String listStr = parts[2];
                     
+                    // 사용자 이름 목록 파싱
                     String[] userNames = listStr.split(",");
                     
-                    // 1. 이름 목록을 UserProfile 리스트로 변환
+                    // 1단계: 이름 목록을 UserProfile 리스트로 변환
                     List<UserProfile> profiles = new ArrayList<>();
                     
                     for (String name : userNames) {
                         name = name.trim();
                         if (name.isEmpty()) continue;
 
-                        // 내 프로필
+                        // 내 프로필인 경우
                         if (name.equals(myProfile.getUsername())) {
                             profiles.add(myProfile);
                         } else {
-                            // 친구 목록에서 검색
+                            // 친구 목록에서 해당 사용자 검색
                             boolean found = false;
                             for (int i = 0; i < userListModel.getSize(); i++) {
                                 UserProfile p = userListModel.getElementAt(i);
@@ -569,26 +580,26 @@ public class ChatClientMain extends JFrame {
                         }
                     }
 
+                    // 2단계: UserListDialog 생성 및 표시
                     SwingUtilities.invokeLater(() -> {
                         Window owner = openedRoomFrames.get(rId);
                         if (owner == null) owner = this;
 
-                        // 2. UserListDialog 생성 및 표시
                         new UserListDialog(
                         	    owner,
                         	    "참여자 목록",
                         	    profiles,
 
-                        	    // 초대 버튼 동작 연결
+                        	    // 초대 버튼 동작: 초대 다이얼로그 열기
                         	    () -> {
                         	        ChatRoomData room = roomMap.get(rId);
                         	        if (room != null) {
                         	            ChatRoomPanel panel = openedRoomFrames.get(rId).getChatRoomPanel();
-                        	            panel.openInviteDialog(); // 기존 초대 UI 호출
+                        	            panel.openInviteDialog();
                         	        }
                         	    },
 
-                        	    // 나가기 버튼 동작 연결
+                        	    // 나가기 버튼 동작: 방 나가기 요청 전송
                         	    () -> {
                         	        try {
                         	            dos.writeUTF("/exitroom " + rId);

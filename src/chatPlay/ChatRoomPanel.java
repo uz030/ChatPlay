@@ -276,7 +276,7 @@ public class ChatRoomPanel extends JPanel {
      * @param msg 채팅 메시지
      */
     public void addBubble(ChatMessage msg) {
-        
+        // ========== 파일 기반 이미지 메시지 처리 ==========
     	if (msg.getContent().startsWith("@imagefile ")) {
             String fileName = msg.getContent().substring(11).trim();
             File imageFile = new File("shared_images/" + fileName);
@@ -324,9 +324,8 @@ public class ChatRoomPanel extends JPanel {
                 return;
             }
         }
-    	
-        // 게임 참여 UI 처리 (GAME_JOIN)
-        if (msg.getContent().startsWith("GAME_JOIN:")) {
+        // ========== 게임 참여 UI 처리 (GAME_JOIN) ==========
+    	if (msg.getContent().startsWith("GAME_JOIN:")) {
             final String gameType = msg.getContent().substring(10).trim();
             
             JPanel joinPanel = new JPanel();
@@ -450,8 +449,7 @@ public class ChatRoomPanel extends JPanel {
             scrollToBottom();
             return;
         }
-        
-        // 게임 시작 알림 처리 (버튼 비활성화용)
+        // ========== 게임 시작 알림 처리 (버튼 비활성화용) ==========
         if (msg.getContent().startsWith("GAME_STARTED:")) {
             // 게임 상태 업데이트
             isGameStarted = true;
@@ -486,8 +484,7 @@ public class ChatRoomPanel extends JPanel {
             scrollToBottom();
             return;
         }
-        
-        // 게임 종료 알림 처리 (버튼 활성화용)
+        // ========== 게임 종료 알림 처리 (버튼 활성화용) ==========
         if (msg.getContent().startsWith("GAME_ENDED:")) {
             // 게임 상태 업데이트
             isGameStarted = false;
@@ -522,8 +519,7 @@ public class ChatRoomPanel extends JPanel {
             scrollToBottom();
             return;
         }
-        
-        // 일반 텍스트 메시지 처리
+        // ========== 일반 텍스트 메시지 처리 ==========
         ChatBubblePanel bubble = new ChatBubblePanel(msg, e -> onBotMenuClicked(e));
 
         JPanel wrapper = new JPanel(new BorderLayout());
