@@ -78,7 +78,7 @@ public class UserListDialog extends JDialog {
         Color hoverColor = new Color(200, 215, 255);
         Color textColor = new Color(50, 60, 90);
 
-        // ====================== [수정] 초대 버튼 (addUser.png) ======================
+        // ====================== 초대 버튼 (addUser.png) ======================
         JButton inviteBtn = new JButton("초대");
         try {
             ImageIcon icon = new ImageIcon(getClass().getResource("/images/addUser.png"));
@@ -107,7 +107,7 @@ public class UserListDialog extends JDialog {
             onInvite.run();
         });
 
-        // ====================== [수정] 나가기 버튼 (exit.png) ======================
+        // ====================== 나가기 버튼 (exit.png) ======================
         JButton exitBtn = new JButton("나가기");
         try {
             ImageIcon icon = new ImageIcon(getClass().getResource("/images/exit.png"));

@@ -19,7 +19,7 @@ public class CatchMindFrame extends JFrame {
     private JLabel timerLabel;
     private JPanel playerPanel;
 
-    // [FIX] 도구 패널 참조용
+    // 도구 패널 참조용
     private JPanel toolPanel;
     
     private List<GamePlayer> players = new ArrayList<>();
@@ -168,7 +168,7 @@ public class CatchMindFrame extends JFrame {
             panel.add(btn);
         }
 
-        // 🧽 이미지 지우개 버튼
+        // 이미지 지우개 버튼
         ImageIcon icon = new ImageIcon(
             getClass().getResource("/images/eraser.png")
         );
@@ -197,14 +197,14 @@ public class CatchMindFrame extends JFrame {
         panel.add(sizeLabel);
         panel.add(sizeSlider);
 
-        // ⭐ 중요
+        //  중요
         panel.setMinimumSize(new Dimension(0, 45));
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
 
         return panel;
     }
     
-    // [FIX] 도구 패널 활성/비활성
+    // 도구 패널 활성/비활성
     private void setToolPanelEnabled(boolean enabled) {
         for (Component c : toolPanel.getComponents()) {
             c.setEnabled(enabled);
